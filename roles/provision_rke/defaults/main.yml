@@ -1,10 +1,10 @@
 ---
-rancher_version: 2.5.5
+rancher_version: 2.5.9
 
 rke_version: v1.2.4
 rke_kubernetes_version: v1.19.6-rancher1-1
-rke_provider: vsphere
-rke_user_username: system_rancher
+#rke_provider: vsphere
+#rke_user_username: system_rancher
 
 rke_kubectl_user: "{{ ansible_ssh_user }}"
 

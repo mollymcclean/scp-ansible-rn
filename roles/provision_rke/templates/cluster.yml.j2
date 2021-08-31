@@ -185,7 +185,7 @@ addons: |
     name: system:authenticated
 ignore_docker_version: false
 private_registries:
-  - url: {{ harbor_hostname }}{{ '' if harbor_ssl_enabled else ':80' }}/{{ harbor_repo_path }}
-    user: {{ harbor_rancher_username }}
-    password: '{{ harbor_rancher_password }}'
+  - url: {{ registry_hostname }}{{ '' if harbor_ssl_enabled else ':80' }}/{{ registry_repo_path }}
+    user: {{ harbor_rancher_username if registry_name == 'harbor' else '' }}
+    password: '{{ harbor_rancher_password if registry_name == 'harbor' else '' }}'
     is_default: true

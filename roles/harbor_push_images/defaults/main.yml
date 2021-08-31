@@ -1,9 +1,11 @@
+registry_hostname: "{{ inventory_hostname }}"
 harbor_hostname: "{{ inventory_hostname }}"
 harbor_project_user: system_rancher
 harbor_project_user_password: Password123456!
 harbor_project_user_real_name: "System Rancher"
 harbor_project_user_email_address: "user@comeplace.com"
 harbor_admin_pw: Password123456
+registry_repo_path: nap
 harbor_repo_path: nap
 rancher_image_source_file_path: "/var/tmp/rancher-images"
 rancher_image_source_file_common_name: rancher-images

@@ -1,16 +1,16 @@
 ---
-# To be able to override these params with params for the localhost, the hostname needs to be defined within a group 
+# To be able to override these params with params for the localhost, the hostname needs to be defined within a group
 # [type_whatever] in the inventory/dev/hosts.ini file and that group also needs defining in the same file as a child
 # of [env_local:children]
 
-rancher_version: 2.5.5
-rancher_url: rancher.lab.int
-rancher_docker_registry: "{{ harbor_hostname }}/{{ harbor_repo_path }}"
+rancher_version: 2.5.9
+rancher_url: rancher-nodes-b2bc5ef13ba620a2.elb.eu-west-1.amazonaws.com
+rancher_docker_registry: "{{ registry_hostname }}/{{ registry_repo_path }}"
 rancher_helm_temp_dir: /tmp/helm-binaries
 rancher_helm_output_dir: /tmp/helm-templates
 
 # NOTE: If you've already saved the images from the rancher docs and loaded them into harbor this version needs to match that.
-cert_manager_version: v0.8.1
+cert_manager_version: v1.0.4
 
 # This should either be rancher, letsEncrypt or secret
 rancher_tls_source: rancher

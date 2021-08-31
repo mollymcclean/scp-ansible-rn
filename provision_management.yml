@@ -40,7 +40,7 @@
   become: true
   roles:
     - extra_disk
-    - nfs_server          
+    - nfs_server
 
 - name: Configure the redis servers (including sentinel)
   hosts: type_redis
@@ -116,7 +116,7 @@
           nopreempt: true
           unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
           unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
-          track_scripts: 
+          track_scripts:
             - postgres_status_check
           vips:
             - "{{ postgres_cluster_floating_ip }}"
@@ -141,10 +141,10 @@
   roles:
     - role: evrardjp.keepalived
       keepalived_scripts:
-        redis_status_check: 
+        redis_status_check:
           check_script: "{{ redis_check_script }}"
-        harbor_status_check: 
-          check_script: "{{ harbor_check_script }}" 
+        harbor_status_check:
+          check_script: "{{ harbor_check_script }}"
       keepalived_instances:
         redis_internal:
           interface: "{{ keepalived_instances_internal_interface }}"
@@ -155,7 +155,7 @@
           nopreempt: true
           unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
           unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
-          track_scripts: 
+          track_scripts:
             - redis_status_check
           vips:
             - "{{ redis_cluster_floating_ip }}"
@@ -169,11 +169,11 @@
           nopreempt: true
           unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
           unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
-          track_scripts: 
+          track_scripts:
             - harbor_status_check
           vips:
             - "{{ harbor_cluster_floating_ip }}"
-      when: groups['type_harbor'] | length > 1  
+      when: groups['type_harbor'] | length > 1
 
 - hosts: type_harbor
   remote_user: "{{ remote_user }}"
@@ -206,13 +206,18 @@
 - name: Push Rancher container images to Harbor
   hosts: type_bastion
   remote_user: "{{ remote_user }}"
-  roles:    
+  roles:
     - harbor_push_images
+    when: registry_name == 'harbor'
+    - docker_push_images
+    when: registry_name == 'docker'
+    - nexus_push_images
+    when: registry_name == 'nexus'
 
 - name: Sync all server times to their clock source
   hosts: all
   remote_user: "{{ remote_user }}"
-  roles: 
+  roles:
     - sync_time
 
 - name: Prepare the RKE nodes
@@ -246,7 +251,7 @@
     - role: evrardjp.keepalived
       keepalived_scripts:
         rancher_check_script:
-          check_script: "{{ rancher_check_script }}"    
+          check_script: "{{ rancher_check_script }}"
       keepalived_instances:
         rancher_internal:
           interface: "{{ keepalived_instances_internal_interface }}"
@@ -257,7 +262,7 @@
           nopreempt: true
           unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
           unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
-          track_scripts: 
+          track_scripts:
             - rancher_check_script
           vips:
             - "{{ rke_cluster_floating_ip }}"
@@ -267,17 +272,17 @@
 # Configure the Rancher admin user password, URL & telemetry #
 ##############################################################
 
-- hosts: type_bastion
-  remote_user: "{{ remote_user }}"
-  roles:
-    - role: configure_rancher_ui
-      tags: configure_rancher_ui
+#- hosts: type_bastion
+#  remote_user: "{{ remote_user }}"
+#  roles:
+#    - role: configure_rancher_ui
+#      tags: configure_rancher_ui
 
 
 #################################################################################
 # Create cloud provider login, node templates, rke template and managed cluster #
 #################################################################################
 
-- name: Run the setup_rancher playbook
-  import_playbook: setup_rancher.yml
-  tags: setup_rancher
+#- name: Run the setup_rancher playbook
+#  import_playbook: setup_rancher.yml
+#  tags: setup_rancher

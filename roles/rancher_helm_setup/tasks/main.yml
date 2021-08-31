@@ -3,7 +3,7 @@
 # hopefully these will become available in the not so distant future - see https://github.com/ansible-collections/kubernetes/issues/28
 # for more information
 #
-# This playbook should be run manually on a machine that has imnternet access and the resulting Helm charts transferred from the 
+# This playbook should be run manually on a machine that has imnternet access and the resulting Helm charts transferred from the
 # {{ rancher_helm_output_dir }} to the bastion server in the home directory of the  {{ remote_user }}
 
 - name: create temporary build directory
