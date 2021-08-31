@@ -1,0 +1,5 @@
+---
+# The user account Ansible will use to connect to and configure nodes.
+# This user should be present on all nodes and should allow ssh-key based
+# access from the Bastion node.
+remote_user: ubuntu

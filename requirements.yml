@@ -1,0 +1,8 @@
+ansible >= 2.10
+cryptography
+dnspython
+netaddr
+pyvmomi
+git+https://github.com/vmware/vsphere-automation-sdk-python.git
+pytest-testinfra
+pytest-xdist

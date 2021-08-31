@@ -1,0 +1,35 @@
+---
+harbor_ca_signed_cert_available : false
+harbor_self_signed_cert: false
+harbor_certs_path: "/home/{{ harbor_user }}/rancher_certs"
+harbor_domain: "{{ harbor_hostname }}"
+
+harbor_external_database_clair_db_name: "{{ clair_db_name }}"
+harbor_external_database_clair_host: "{{ postgres_cluster_floating_ip }}"
+harbor_external_database_clair_password: "{{ harbor_postgres_password }}"
+harbor_external_database_clair_port: "{{ postgres_port }}"
+harbor_external_database_clair_username: "{{ harbor_postgres_username }}"
+harbor_external_database_harbor_db_name: "{{ harbor_db_name }}"
+harbor_external_database_harbor_host: "{{ postgres_cluster_floating_ip }}"
+harbor_external_database_harbor_password: "{{ harbor_postgres_password }}"
+harbor_external_database_harbor_port: "{{ postgres_port }}"
+harbor_external_database_harbor_username: "{{ harbor_postgres_username }}"
+harbor_external_database_notary_server_db_name: "{{ notaryserver_db_name }}"
+harbor_external_database_notary_server_host: "{{ postgres_cluster_floating_ip }}"
+harbor_external_database_notary_server_password: "{{ harbor_postgres_password }}"
+harbor_external_database_notary_server_port: "{{ postgres_port }}"
+harbor_external_database_notary_server_username: "{{ harbor_postgres_username }}"
+harbor_external_database_notary_signer_db_name: "{{ notarysigner_db_name }}"
+harbor_external_database_notary_signer_host: "{{ postgres_cluster_floating_ip }}"
+harbor_external_database_notary_signer_password: "{{ harbor_postgres_password }}"
+harbor_external_database_notary_signer_port: "{{ postgres_port }}"
+harbor_external_database_notary_signer_username: "{{ harbor_postgres_username }}"
+harbor_external_redis_host: "{{ redis_cluster_floating_ip }}"
+harbor_external_redis_password: "{{ redis_password }}"
+harbor_external_redis_port: "{{ redis_port }}"
+
+harbor_lets_encrypt_cert: false
+harbor_path: "/home/{{ harbor_user }}/harbor"
+
+harbor_postgres_password: ''
+harbor_postgres_username: ''

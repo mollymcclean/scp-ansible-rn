@@ -1,0 +1,8 @@
+---
+yum_repo_names_bastion:
+  - 'docker'
+apps_cluster_rke_vapp_properties: []
+apps_cluster_private_registries:
+- url: "{{ harbor_domain }}/{{ harbor_repo_path }}"
+  isDefault: true
+  user: "{{ harbor_rancher_username }}"

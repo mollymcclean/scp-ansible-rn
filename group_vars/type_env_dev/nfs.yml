@@ -1,0 +1,4 @@
+---
+nfs_server: 192.168.146.95
+nfs_dest_path: /data
+nfs_server_path: /data/harborshare

@@ -1,0 +1,9 @@
+##############################################################
+# Configure the Rancher admin user password, URL & telemetry #
+##############################################################
+
+- hosts: type_bastion
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: configure_rancher_ui
+      tags: configure_rancher_ui

@@ -1,0 +1,26 @@
+---
+- name: Install NFS server.
+  apt:
+    name:
+      - nfs-common
+      - nfs-kernel-server
+    state: present
+    update_cache: yes
+  tags: online_install
+
+- name: Ensure directories to export exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+  with_items: "{{ exports }}"
+
+- name: Set exports file
+  template:
+    src: exports.j2
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload nfs

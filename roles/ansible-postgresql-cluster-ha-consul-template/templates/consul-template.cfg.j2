@@ -1,0 +1,38 @@
+consul {
+  auth {
+    enabled = false
+  }
+
+  address = "{{ consul_tpl_consul_url }}:8500"
+
+  retry {
+    enabled = true
+    attempts = 12
+    backoff = "250ms"
+    max_backoff = "1m"
+  }
+
+  ssl {
+    enabled = false
+  }
+}
+
+reload_signal = "SIGHUP"
+kill_signal = "SIGINT"
+max_stale = "10m"
+log_level = "info"
+
+wait {
+  min = "5s"
+  max = "10s"
+}
+
+template {
+  source = "{{ consul_tpl_home }}/templates/haproxy.ctmpl"
+  destination = "/etc/haproxy/haproxy.cfg"
+  command = "sudo systemctl reload haproxy || true"
+  command_timeout = "60s"
+  perms = 0600
+  backup = true
+  wait = "2s:6s"
+}

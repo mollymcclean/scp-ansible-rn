@@ -1,0 +1,20 @@
+- name: Install nfs util
+  become: true
+  package:
+    name: nfs-utils
+    state: present
+  tags: online_install
+
+- name: Create directory
+  become: true
+  file:
+    path: "{{ nfs_dest_path }}"
+    state: directory
+
+- name: Mount a nfs share on a client
+  become: true
+  mount:
+    src: "{{ nfs_server }}:{{ nfs_server_path }}"
+    path: "{{ nfs_dest_path }}"
+    fstype: nfs
+    state: mounted

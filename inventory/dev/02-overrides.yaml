@@ -1,0 +1,8 @@
+#---
+#all:
+#  children:
+#    type_app_gateway:
+#      hosts:
+#        dev-app-gateway.lab.int:
+#          # Overwrite app gateway IP to internal value as the VMWare plugin only selects external
+#          ansible_host: 172.22.125.1

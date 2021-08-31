@@ -1,0 +1,23 @@
+#!/bin/bash
+# Defaults
+INITIALISED=false
+RUNNING=false
+SENTINEL_ROLE=unknown
+
+if [[ -f /etc/redis/sentinel_{{ redis_sentinel_port }}.conf ]]; then
+  INITIALISED=true
+  if redis-cli -p {{ sentinel_facts_redis_sentinel_port }} --no-auth-warning -a {{ sentinel_facts_redis_sentinel_password }} ping | grep -q 'PONG'; then
+    RUNNING=true
+    SENTINEL_ROLE=$(redis-cli -p {{ sentinel_facts_redis_sentinel_port }} --no-auth-warning -a {{ sentinel_facts_redis_sentinel_password }} role | head -1)
+    REDIS_MASTER_IP=$(redis-cli -p {{ sentinel_facts_redis_sentinel_port }} --no-auth-warning -a {{ sentinel_facts_redis_sentinel_password }} sentinel master {{ sentinel_facts_cluster_name }} | head -4 | tail -1 )
+  fi
+fi
+
+cat <<EOF
+{
+  "initialised": $INITIALISED,
+  "running": $RUNNING,
+  "sentinel_role": "$SENTINEL_ROLE",
+  "redis_master_node": "$REDIS_MASTER_IP"
+}
+EOF

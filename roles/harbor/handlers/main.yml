@@ -1,0 +1,8 @@
+---
+- name: reload harbor
+  become: true
+  systemd:
+    name: harbor
+    daemon_reload: yes
+    state: restarted
+    enabled: yes

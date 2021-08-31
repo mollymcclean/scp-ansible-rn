@@ -1,0 +1,15 @@
+plugin: community.vmware.vmware_vm_inventory
+strict: False
+hostname: rnvcentre.lab.int
+username: administrator@rnvsphere.local
+password: Password123456!
+validate_certs: False
+with_tags: True
+keyed_groups:
+- key: tags
+  prefix: "type"
+  separator: '_'
+filters:
+- "'env_prod' in tags"
+hostnames:
+- config.name + "." + "lab.int"

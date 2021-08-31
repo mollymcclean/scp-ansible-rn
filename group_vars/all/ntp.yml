@@ -1,0 +1,15 @@
+---
+ntp_manage_config: true
+ntp_cron_handler_enabled: true
+ntp_tinker_panic: true
+ntp_package: chrony
+ntp_tzdata_package: tzdata
+ntp_timezone: UTC
+ntp_daemon: chrony
+ntp_config_file: chrony.conf
+ntp_area: uk
+ntp_servers:
+  - "0{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+  - "1{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+  - "2{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+  - "3{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"

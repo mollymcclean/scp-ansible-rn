@@ -1,0 +1,8 @@
+- hosts: "node_type_worker:&cluster_{{ target_cluster_name | default('apps') }}"
+  remote_user: centos
+  become: true
+  vars:
+    keepalived_cluster_vip: "{{ lookup('vars', (target_cluster_name | default('apps')) + '_cluster_floating_ip') }}"
+    virtual_router_id: "{{ lookup('vars', (target_cluster_name | default('apps')) + '_cluster_virtual_router_id') }}"
+  roles:
+    - evrardjp.keepalived

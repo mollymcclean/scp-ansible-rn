@@ -1,0 +1,32 @@
+---
+# This module places CA certs copied from a URL into /usr/local/share/ca-certificates and updates the trusted CA in the node
+- name: Install trusted CA Certificates
+  become: true
+  copy:
+    content: "{{ item.pem }}"
+    dest: "{{ ca_certificates_local_dir }}/{{ item.name }}.crt"
+    group: root
+    mode: '0644'
+    owner: root
+  with_items: "{{ ca_certificates_trusted }}"
+  when: item.pem is defined
+  loop_control:
+    label: "{{ item.name }}"
+  register: _ca_certificates_copied
+  notify: update ca-certificates
+
+# This module places CA certs copied from a URL into /usr/local/share/ca-certificates and updates the trusted CA in the node
+- name: Install remote trusted CA Certificates
+  become: true
+  get_url:
+    url: "{{ item.remote_pem }}"
+    dest: "{{ ca_certificates_local_dir }}/{{ item.name }}.crt"
+    group: root
+    mode: '0644'
+    owner: root
+  with_items: "{{ ca_certificates_trusted }}"
+  when: item.remote_pem is defined
+  loop_control:
+    label: "{{ item.name }}"
+  register: _ca_certificates_written
+  notify: update ca-certificates

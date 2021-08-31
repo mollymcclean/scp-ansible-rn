@@ -1,0 +1,9 @@
+---
+rke_version: v1.2.4
+harbor_repo_path: rancher
+
+rke_use_custom_certs: true
+rke_custom_certificates_privatekey_passphrase: automationlogic
+rke_custom_certificates_base_path: /var/tmp/rancher_certs
+rke_custom_certificates_ca_key_file: private/rancher-ca.key.pem
+rke_custom_certificates_ca_crt_file: rancher-ca.cert.pem

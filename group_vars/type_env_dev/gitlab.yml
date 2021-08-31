@@ -1,0 +1,32 @@
+---
+gitlab_domain: "gitlab.lab.int"
+gitlab_url: "https://{{ gitlab_domain }}"
+gitlab_rancher_info_gitlab_url: "{{ gitlab_url }}"
+provision_gitlab_gitlab_url: "{{ gitlab_url }}"
+
+# LDAP Configuration.
+gitlab_ldap_enabled: "true"
+gitlab_ldap_host: "{{ active_directory_domain }}"
+gitlab_ldap_base: "DC=lab,DC=int"
+
+gitlab_runner_name: "{{ environment_name }} GitLab Runner"
+gitlab_runner_gitlab_domain: "{{ gitlab_domain }}"
+
+gitlab_lets_encrypt_cert: False
+gitlab_create_self_signed_cert: False
+gitlab_ca_signed_cert: True
+
+# Runner validation seems to use a cert bundle in it's python bundle rather than the system bundle
+# so this has to be false in our ca signed env
+gitlab_runner_validate_certs: False
+
+gitlab_ssl_certificate_key: "/etc/gitlab/ssl/{{ gitlab_domain }}_private.key"
+gitlab_ssl_certificate: "/etc/gitlab/ssl/{{ gitlab_domain }}.fullchain.crt"
+
+gitlab_extra_settings:
+  - gitlab_rails:
+    - key: "gitlab_ldap_user_filter"
+      value: "memberOf=CN=RANCHER-DEV-GITLAB,OU=Permissions,OU=Groups,DC=lab,DC=int"
+
+gitlab_runner_docker_network_mode: host
+

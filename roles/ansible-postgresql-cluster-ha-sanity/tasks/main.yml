@@ -1,0 +1,16 @@
+---
+- name: Stop if even number of consul hosts
+  assert:
+    that: "groups.consul_node|length is not divisibleby 2"
+    fail_msg: "Counts consul hosts is not divisibleby 2(1-no HA,3,5)"
+  when:
+    - groups["consul_node"] is defined
+    - inventory_hostname in groups['consul_node']
+
+- name: Stop if even number of patroni_node hosts
+  assert:
+    that: "groups['patroni_node'] | length > 1"
+    fail_msg: "Counts hosts in patroni_node group minimum '2' "
+  when:
+    - groups["patroni_node"] is defined
+    - inventory_hostname in groups['patroni_node']

@@ -1,0 +1,3 @@
+---
+lets_encrypt_staging: "https://acme-staging-v02.api.letsencrypt.org/directory"
+lets_encrypt_prod: "https://acme-v02.api.letsencrypt.org/directory"

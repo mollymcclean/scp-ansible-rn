@@ -1,0 +1,26 @@
+---
+# Global vars
+patroni_name_cluster: postgres
+
+patroni_path_bin: "/usr/local/bin"
+
+patroni_yml_path: "/etc/patroni"
+
+path_data_psql: "/data/patroni"
+
+patroni_consul_ip_address: 127.0.0.1
+
+# LOGGING
+path_log_dir: "/var/log/postgresql"
+name_log_file: "postgresql.log"
+
+# Setting yaml file
+# General recommendation to set the shared_buffers is as follows.
+#
+#    Below 2GB memory, set the value of shared_buffers to 20% of total system memory.
+#
+#    Below 32GB memory, set the value of shared_buffers to 25% of total system memory.
+#
+#    Above 32GB memory, set the value of shared_buffers to 8GB
+
+patroni_sb: 750MB

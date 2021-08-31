@@ -1,0 +1,19 @@
+# The location on the build server to copy the certs from.
+cert_from_ca_dc_root_key_path: /var/tmp/rancher_certs
+
+# The path to the CA cert to install for the bdellegrazie.ca_certificate playbook
+ca_certificates_local_dir: /var/tmp/rancher_certs
+
+ca_certificates_update: true
+
+# The intermediary cert & key to use
+cert_from_ca_intermediate_cert_pem: rancher-intermediate.cert.pem
+cert_from_ca_intermediate_key_pem: rancher-intermediate.key.pem
+
+# Trusted CA certificates to use
+ca_certificates_trusted:
+  - name: Rancher_Dev_Root_CA
+    pem: "{{ lookup('file', '{{ cert_from_ca_dc_root_key_path }}/private/rancher-ca.cert.pem') | trim }}"
+
+# CA cert for Ranchers certificates
+rke_ca_certificates_trusted: "{{ ca_certificates_trusted }}"

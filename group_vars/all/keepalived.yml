@@ -1,0 +1,61 @@
+---
+keepalived_global_defs:
+  - enable_script_security
+  - vrrp_version 2
+  - script_user root
+  - vrrp_garp_master_delay 10
+  - vrrp_garp_master_refresh 60
+  - vrrp_garp_master_refresh_repeat 5
+
+check_script_interval: 5
+check_script_fall: 2
+check_script_rise: 4
+check_script_timeout: 2
+
+keepalived_scripts:
+  nginx_port_check:
+    check_script: "pidof nginx"
+    interval: "{{ check_script_interval }}"
+    fall: "{{ check_script_fall }}"
+    rise: "{{ check_script_rise }}"
+    timeout: "{{ check_script_timeout }}"
+
+keepalived_instances_internal_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['interface'] }}"
+
+keepalived_instances:
+  internal:
+    interface: "{{ keepalived_instances_internal_interface }}"
+    advert_int: 1
+    state: "{{ (play_hosts.index(inventory_hostname) == 0) | ternary('MASTER','BACKUP') }}"
+    virtual_router_id: "{{ virtual_router_id }}"
+    priority: "{{ (play_hosts | length - play_hosts.index(inventory_hostname)) * 30 // (play_hosts|length) }}"
+    nopreempt: true
+    unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
+    unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
+    track_scripts:
+      - nginx_port_check
+
+    vips:
+      - "{{ keepalived_cluster_vip }}"
+
+keepalived_cluster_vip: "10.0.0.1"
+virtual_router_id: "23"
+ops_cluster_virtual_router_id: 32
+apps_cluster_virtual_router_id: 42
+
+rke_cluster_virtual_router_id: 52
+postgres_haproxy_virtual_router_id: 48
+redis_cluster_virtual_router_id: 52
+harbor_cluster_virtual_router_id: 22
+
+deploy_rke_keepalived: true
+
+# The number of harbor service that keepalive should look for to determine if a node is healthy.
+# This should be 7 plus one for each '--with-<service>' string in the install.yml of the harbor 
+# module. E.g. 8 for --with-chartmuseum, 9 for --with-chartmuseum --with-trivy
+number_of_harbor_containers: 8
+
+redis_check_script: /usr/bin/redis-cli -a {{ redis_keepalived_auth_pass }} info replication | grep ^role:master
+harbor_check_script: /usr/bin/test `/usr/bin/docker ps | grep goharbor | awk -F \( '{print $2}' | awk -F \) '{print $1}' | grep ^healthy | wc -l` -eq {{ number_of_harbor_containers }}
+postgres_check_script: /usr/bin/pgrep haproxy
+rancher_check_script: /bin/ps -ef | /bin/grep nginx | /bin/grep master

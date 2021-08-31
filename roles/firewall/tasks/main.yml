@@ -1,0 +1,59 @@
+---
+- name: Create firewall folder
+  become: yes
+  file:
+    path: /opt/firewall
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy the firewall onto the machine
+  become: yes
+  template:
+    src: "{{ template_indicator }}.setup_firewall.sh.j2"
+    dest: /opt/firewall/setup_firewall.sh
+    owner: root
+    group: root
+    mode: 0750
+  register: firewall_script
+
+- name: Touch rc.local file incase it does not yet exist
+  become: yes
+  ansible.builtin.file:
+    path: /etc/rc.local
+    owner: root
+    group: root
+    mode: 0750
+    state: touch
+    force: no
+  when: firewall_script.changed
+
+- name: Add firewall rules
+  become: yes
+  ansible.builtin.command: /opt/firewall/setup_firewall.sh
+  when: firewall_script.changed
+
+- name: Reset SSh connection after installing firewall rules
+  meta: reset_connection
+
+- name: Restart docker service to re-apply ephermeral Docker firewall rules
+  becoime: yes
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  when: 'firewall_script.changed and ("type_harbor" in group_names or "type_rke" in group_names)'
+
+- name: Ensure firewall script is run on boot
+  become: yes
+  lineinfile:
+    path: /etc/rc.local
+    line: /opt/firewall/setup_firewall.sh
+
+- name: Ensure Docker is restarted after firewall script runs
+  become: yes
+  lineinfile:
+    path: /etc/rc.local
+    line: systemctl restart docker.service
+    insertafter: '^/opt/firewall/setup_firewall\.sh'
+  when: '"type_harbor" in group_names or "type_rke" in group_names'

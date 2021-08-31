@@ -1,0 +1,21 @@
+- name: Setup active directory
+  rancher_active_directory:
+    rancher_domain: "{{ rancher_ui_domain }}"
+    access_mode: "{{ rancher_ui_access_mode }}"
+    active_directory_allowed_login_principals: "{{ rancher_active_directory_allowed_login_principals if rancher_active_directory_allowed_login_principals is defined else [] }}"
+    api_bearer_token: "{{ rancher_ui_api_token }}"
+    service_account_username: "{{ rancher_ui_active_directory_service_account_username }}"
+    service_account_password: "{{ rancher_ui_active_directory_service_account_password }}"
+    domain_servers: "{{ rancher_ui_active_directory_domains }}"
+    default_login_domain: "{{ rancher_ui_active_directory_default_domain }}"
+    group_search_base: "{{ rancher_ui_active_directory_group_search_base }}"
+    user_search_base: "{{ rancher_ui_active_directory_user_search_base }}"
+    validate_certs: "{{ rancher_ui_validate_ssl_certs }}"
+
+- name: Enable local cluster monitoring
+  rancher_monitoring:
+    rancher_domain: "{{ rancher_ui_domain }}"
+    rancher_cluster_id: local
+    api_bearer_token: "{{ rancher_ui_api_token }}"
+    enable_monitoring: "{{ rancher_ui_enable_local_cluster_monitoring }}"
+    validate_certs: "{{ rancher_ui_validate_ssl_certs }}"

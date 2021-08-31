@@ -1,0 +1,10 @@
+---
+# Hosts in the listed groups have specific firewall requirements and will use specific templates
+group_templates: "{{ [ 'type_bastion', 'type_app_gateway', 'type_rke' ] | intersect(group_names) }}"
+template_indicator: "{{ group_templates[0] if (group_templates|length>0) else 'nap_common' }}"
+
+docker_ipv4_range: 172.17.0.0./16
+# CIDR range allocated for pod IPs
+kubernetes_container_ipv4_range: 10.42.0.0/16
+# Internal CIDR range allocated for API services
+kubernetes_system_svc_ipv4_range: 10.43.0.0/12

@@ -1,0 +1,84 @@
+#!/bin/bash
+
+#--------------------Firewall for NAC--------------------#
+
+
+#--------------------------------------------------------#
+#------------------------CONTENTS------------------------#
+#--------------------------------------------------------#
+
+# [1100] INPUT CHAIN
+# [1200] FORWARD CHAIN
+# 1300] OUTPUT CHAIN
+
+
+#--------------------------------------------------------#
+#---------------------CONFIGURATION----------------------#
+#--------------------------------------------------------#
+
+##==VARIABLES==##
+
+BASTION_ADDR={{ bastion_internal_ip }}
+VSPHERE_ADDR="{{ lookup('dig', rke_vcenter_domain) }}"      # IP of the vSphere server
+INTERNAL_NET={{ internal_ipv4_range }}
+DOCKER_NET={{ docker_ipv4_range }}
+KUBE_NET={{ kubernetes_container_ipv4_range }}
+KUBE_SYSTEM_SVCS={{ kubernetes_system_svc_ipv4_range }}
+
+##ROUTING FOR SENSITIVE TRAFFIC##
+ip route add $VSPHERE_ADDR via $BASTION_ADDR
+
+##CLEAR FIREWALL RULES##
+iptables -t filter -F
+iptables -t nat -F
+iptables -t mangle -F
+
+##SETUP DEFAULT POLICY##
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -t filter -N SSH           # Controls SSH access to the VM
+
+#[1100]#==INPUT CHAIN==##
+iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A INPUT -i lo -j ACCEPT
+iptables -t filter -A INPUT -s 127.0.0.0/8 -j DROP
+iptables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -t filter -A INPUT -p tcp --dport 22 -j SSH
+
+{% for host in groups['type_rke'] | intersect(groups['type_env_' + environment_name]) %}
+iptables -t filter -A INPUT -s "{{ hostvars[host]['guest.ipAddress'] }}" -p tcp --dport 10251 -j ACCEPT -m comment --comment "Allow RKE nodes to access kube-scheduler /healthz endpoint"
+iptables -t filter -A INPUT -s "{{ hostvars[host]['guest.ipAddress'] }}" -p tcp --dport 10252 -j ACCEPT -m comment --comment "Allow RKE nodes to access kube-controller-manager /healthz endpoint"
+iptables -t filter -A INPUT -s "{{ hostvars[host]['guest.ipAddress'] }}" -p tcp --dport 10254 -j ACCEPT -m comment --comment "Allow RKE nodes to access ingress /healthz endpoint"
+iptables -t filter -A INPUT -s "{{ hostvars[host]['guest.ipAddress'] }}" -p tcp --dport 8181 -j ACCEPT -m comment --comment "Allow RKE nodes to access RKE HTTP endpoint"
+
+iptables -t filter -A INPUT -p tcp --dport 10251 -j REJECT --reject-with icmp-proto-unreachable -m comment --comment "Drop all access to kube-scheduler /healthz"
+iptables -t filter -A INPUT -p tcp --dport 10252 -j REJECT --reject-with icmp-proto-unreachable -m comment --comment "Drop all access to kube-control-manager /healthz"
+iptables -t filter -A INPUT -p tcp --dport 10254 -j REJECT --reject-with icmp-proto-unreachable -m comment --comment "Drop all access to ingress /healthz"
+iptables -t filter -A INPUT -p tcp --dport 80 -j REJECT --reject-with icmp-proto-unreachable -m comment --comment "Drop all access to kube-scheduler /healthz"
+iptables -t filter -A INPUT -p tcp --dport 8181 -j REJECT --reject-with icmp-proto-unreachable -m comment --comment "Drop all access to RKE HTTP endpoint"
+
+iptables -t filter -A INPUT -s $INTERNAL_NET -j ACCEPT -m comment --comment "Traffic from internal network"
+iptables -t filter -A INPUT -s $DOCKER_NET -j ACCEPT -m comment --comment "Traffic from Docker containers"
+iptables -t filter -A INPUT -s $KUBE_NET -j ACCEPT -m comment --comment "Calico container network traffic"
+iptables -t filter -A INPUT -s $KUBE_SYSTEM_SVCS -j ACCEPT -m comment --comment "Traffic from internal network"
+iptables -t filter -A INPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]INPUT_denied: " --log-level 4
+iptables -t filter -A INPUT -j REJECT --reject-with icmp-proto-unreachable
+
+#[1200]#==SSH CHAIN==##
+iptables -t filter -A SSH -p tcp --dport 22 -s $BASTION_ADDR -m recent --set --name INTERNAL_SSH -m comment --comment "SSH traffic from bastion host"
+iptables -t filter -A SSH -p tcp -m recent --rcheck --rsource --name INTERNAL_SSH -j LOG --log-prefix "[ipt]Internal_SSH_Login_src: " --log-level 4
+iptables -t filter -A SSH -p tcp -m recent --rcheck --name INTERNAL_SSH -j ACCEPT
+
+#[1300]#==OUTPUT CHAIN==##
+iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+iptables -t filter -A OUTPUT -o lo -j ACCEPT
+
+iptables -t filter -A OUTPUT -d 169.254.169.254 -j ACCEPT -m comment --comment "Link-local traffic"
+iptables -t filter -A OUTPUT -d $VSPHERE_ADDR -p tcp --dport 443 -j ACCEPT -m comment --comment "Traffic to vSphere API"
+iptables -t filter -A OUTPUT -d $INTERNAL_NET -j ACCEPT -m comment --comment "Traffic from internal network"
+iptables -t filter -A OUTPUT -d $DOCKER_NET -j ACCEPT -m comment --comment "Traffic from Docker containers"
+iptables -t filter -A OUTPUT -d $KUBE_NET -j ACCEPT -m comment --comment "Calico container network traffic"
+iptables -t filter -A OUTPUT -d $KUBE_SYSTEM_SVCS -jj ACCEPT -m comment --comment "kubernetes system services traffic"
+iptables -t filter -A OUTPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]INPUT_denied: " --log-level 4
+
+exit 0

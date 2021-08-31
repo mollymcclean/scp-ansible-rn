@@ -1,0 +1,4 @@
+---
+bastion_docker_disk_location: /dev/sdb
+rke_docker_disk_location: /dev/sdb
+harbor_docker_disk_location: /dev/sdb

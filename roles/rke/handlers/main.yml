@@ -1,0 +1,8 @@
+- name: reboot vm
+  become: yes
+  reboot:
+
+- name: restart sshd
+  service:
+    name: sshd
+    state: restarted

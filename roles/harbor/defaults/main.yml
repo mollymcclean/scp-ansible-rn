@@ -1,0 +1,55 @@
+harbor_version: 2.1.2
+harbor_hostname: "{{ inventory_hostname }}"
+harbor_user: "{{ ansible_ssh_user }}"
+harbor_admin_pw: Password123456
+
+harbor_path: "/home/{{ harbor_user }}/harbor"
+harbor_certs_path: "/home/{{ harbor_user }}/harbor_certs"
+
+harbor_ssl_enabled: false
+harbor_ssl_private_key: "{{ harbor_certs_path }}/harbor_private.key"
+harbor_ssl_certificate: "{{ harbor_certs_path }}/harbor.fullchain.crt"
+harbor_ssl_ca_chain_cert: "{{ harbor_certs_path }}/ca-chain.cert.pem"
+
+harbor_external_database: False
+harbor_external_database_harbor_host: harbor_db_host
+harbor_external_database_harbor_port: harbor_db_port
+harbor_external_database_harbor_db_name: harbor_db_name
+harbor_external_database_harbor_username: harbor_db_username
+harbor_external_database_harbor_password: harbor_db_password
+harbor_external_database_clair_host: clair_db_host
+harbor_external_database_clair_port: clair_db_port
+harbor_external_database_clair_db_name: clair_db_name
+harbor_external_database_clair_username: clair_db_username
+harbor_external_database_clair_password: clair_db_password
+harbor_external_database_notary_signer_host: notary_signer_db_host
+harbor_external_database_notary_signer_port: notary_signer_db_port
+harbor_external_database_notary_signer_db_name: notary_signer_db_name
+harbor_external_database_notary_signer_username: notary_signer_db_username
+harbor_external_database_notary_signer_password: notary_signer_db_password
+harbor_external_database_notary_server_host: notary_server_db_host
+harbor_external_database_notary_server_port: notary_server_db_port
+harbor_external_database_notary_server_db_name: notary_server_db_name
+harbor_external_database_notary_server_username: notary_server_db_username
+harbor_external_database_notary_server_password: notary_server_db_password
+
+harbor_external_redis: False
+harbor_external_redis_host: ''
+harbor_external_redis_port: ''
+harbor_external_redis_password: ''
+
+harbor_data_volume: /data
+harbor_binary_location: "https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-offline-installer-v{{ harbor_version }}.tgz"
+
+harbor_ldap_base_dn: "DC=lab,DC=int"
+harbor_ldap_filter: "(objectClass=person)"
+harbor_ldap_group_base_dn: "CN=harbor,OU=Groups,DC=lab,DC=int"
+harbor_ldap_group_search_filter: "(objectClass=group)"
+harbor_ldap_group_admin_dn: "CN=harbor,OU=Groups,DC=lab,DC=int"
+harbor_ldap_search_dn: "CN=HARBOR Service,OU=Users,DC=lab,DC=int"
+harbor_ldap_search_password: "Password123456"
+harbor_ldap_url: "lab.int:389"
+
+harbor_service_file: docker-compose.yml
+
+harbor_validate_certs: yes

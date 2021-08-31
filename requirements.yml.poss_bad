@@ -1,0 +1,16 @@
+roles:
+- src: geerlingguy.gitlab
+  version: 3.0.0
+- src: geerlingguy.ntp
+  version: 2.1.0
+- src: bdellegrazie.ca_certificates
+  version: v3.1.1
+#The keepalived role version needs to be kept in sync with that in the cns-ho-centos-hardening repo
+- src: evrardjp.keepalived
+  version: 3.11.1
+- src: davidwittman.redis
+  version: 1.2.8
+
+collections:
+- name: community.vmware
+- name: community.general

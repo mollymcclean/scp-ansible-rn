@@ -1,0 +1,9 @@
+---
+postgresql_packages:
+ - postgresql-{{ postgresql_version }}
+ 
+harbor_db_name: harbordb
+clair_db_name: clairdb
+notarysigner_db_name: notarysignerdb
+notaryserver_db_name: notaryserverdb
+postgres_port: 5432

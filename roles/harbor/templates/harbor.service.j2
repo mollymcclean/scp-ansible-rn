@@ -1,0 +1,21 @@
+[Unit]
+Description=Harbor
+After=docker.service systemd-networkd.service systemd-resolved.service
+Requires=docker.service
+Documentation=https://github.com/goharbor/harbor/tree/master/docs
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+{# On redhat we install docker-compose through yum - so docker-compose is a absolute path. In ubuntu we install through apt and is relative #}
+{% if ansible_os_family == 'RedHat' %}
+ExecStart=/usr/bin/docker-compose -f /home/{{ harbor_user }}/harbor/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /home/{{ harbor_user }}/harbor/docker-compose.yml down
+{% else %}
+ExecStart=/usr/local/bin/docker-compose -f /home/{{ harbor_user }}/harbor/docker-compose.yml up
+ExecStop=/usr/local/bin/docker-compose -f /home/{{ harbor_user }}/harbor/docker-compose.yml down
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+---
+- name: Register runner
+  become: yes
+  community.general.gitlab_runner:
+    api_url: "https://{{ gitlab_runner_gitlab_domain }}/"
+    api_token: "{{ gitlab_runner_gitlab_api_token }}"
+    registration_token: "{{ gitlab_runner_registration_token }}"
+    name: "{{ gitlab_runner_name }}"
+    state: present
+    active: True
+    run_untagged: True
+    locked: False
+    validate_certs: "{{ gitlab_runner_validate_certs }}"
+    access_level: "{{ gitlab_runner_access_level }}"
+    tag_list: "{{ gitlab_runner_tag_list }}"
+  register: gitlab_runner_response
+
+# We only get the token back when the runner is created. So for now limit this token to being when the token is created
+- name: Template configuration file
+  become: yes
+  template:
+    src: config.toml.j2
+    dest: /etc/gitlab-runner/config.toml
+    owner: root
+    group: root
+    mode: '0600'
+  when: gitlab_runner_response.changed
+  notify:
+    - restart gitlab runner

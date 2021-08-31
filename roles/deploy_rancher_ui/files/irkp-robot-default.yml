@@ -1,0 +1,72 @@
+apiVersion: management.cattle.io/v3
+context: project #valid options: 'cluster', 'project' or 'global'
+displayName: irkp-robot-default
+kind: RoleTemplate
+metadata:
+  name: irkp-robot-default
+rules:
+  - apiGroups:
+      - apps
+      - batch
+      - extensions
+      - networking.k8s.io
+    resources:
+      - cronjobs
+      - deployments
+      - deployments/rollback
+      - deployments/scale
+      - ingresses
+      - jobs
+      - networkpolicies
+      - replicasets
+      - replicasets/scale
+      - replicationcontrollers/scale
+      - statefulsets
+      - statefulsets/scale
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - endpoints
+      - persistentvolumeclaims
+      - persistentvolumes
+      - pods
+      - pods/attach
+      - pods/exec
+      - pods/log
+      - pods/portforward
+      - secrets
+      - serviceaccounts
+      - services
+    verbs:
+      - '*'
+  - apiGroups:
+      - autoscaling
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - certmanager.k8s.io
+    resources:
+      - certificates
+      - challenges
+      - orders
+    verbs:
+      - "*"
+  - apiGroups:
+      - cert-manager.io
+    resources:
+      - certificates
+    verbs:
+      - "*"

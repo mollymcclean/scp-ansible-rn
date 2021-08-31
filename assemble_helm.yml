@@ -1,0 +1,4 @@
+---
+- hosts: "localhost"
+  roles:
+    - rancher_helm_setup

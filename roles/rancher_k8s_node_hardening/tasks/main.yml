@@ -1,0 +1,39 @@
+---
+# Default behaviour for the kubelet is to set several kernel tunables on start.
+#
+# In a hardened cluster we set the --protect-kernel-defaults flag, which will
+# change the kubelet's behaviour to error if the flags are not as expected.
+#
+# To support this, the following items must be set before the kubelet starts.
+- name: Set kernel tunables as required by kubelet
+  become: true
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_set: yes
+    sysctl_file: /etc/sysctl.d/90-kubelet.conf
+  loop:
+    - { name: 'vm.overcommit_memory', value: '1' }
+    - { name: 'vm.panic_on_oom', value: '0' }
+    - { name: 'kernel.panic', value: '10' }
+    - { name: 'kernel.panic_on_oops', value: '1' }
+    - { name: 'kernel.keys.root_maxbytes', value: '25000000' }
+
+# etcd UID and GID are hardcoded to synchronise them across machines.
+# Be careful about exposing these as variables or changing the defaults, as they
+# will be referenced in Rancher's cluster YAML for etcd nodes.
+- name: Create etcd group
+  become: true
+  group:
+    name: etcd
+    gid: 52034
+    state: present
+
+- name: Create etcd user
+  become: true
+  user:
+    name: etcd
+    uid: 52034
+    group: etcd

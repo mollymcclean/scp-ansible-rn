@@ -1,0 +1,6 @@
+---
+extra_disk_target_dir: /data
+extra_disk_location: /dev/sdb
+extra_disk_owner: root
+extra_disk_group: root
+extra_disk_fstype: ext4

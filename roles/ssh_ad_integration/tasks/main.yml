@@ -1,0 +1,97 @@
+---
+- name: Check if machine is bound
+  shell: /bin/bash -c "realm list | grep sssd"
+  register: realmd_bound
+  check_mode: no
+  changed_when: false
+  ignore_errors: true
+
+- name: Join Redhat / CentOS system to AD and put the computer object in the Linux OU
+  expect:
+    command: /bin/bash -c "/usr/sbin/realm join {{ ssh_ad_fqdn }} --user {{ ssh_ad_join_username }}@{{ ssh_ad_fqdn }} --computer-ou '{{ ssh_ad_ou_to_join }}'"
+    responses:
+      (?i)Password.*: "{{ ssh_ad_join_password }}"
+    timeout: 180
+  when: realmd_bound.rc != 0 and ansible_os_family == "RedHat"
+  register: result
+  until: result is succeeded
+  retries: 3
+  delay: 10
+  no_log: True
+
+- name: Join Ubuntu system to AD and put the computer object in the Linux OU
+  expect:
+    command: /bin/bash -c "/usr/sbin/realm join {{ ssh_ad_fqdn }} --user {{ ssh_ad_join_username }} --computer-ou '{{ ssh_ad_ou_to_join }}'"
+    responses:
+      (?i)Password.*: "{{ ssh_ad_join_password }}"
+    timeout: 180
+  when: realmd_bound.rc != 0 and ansible_os_family == "Debian"
+  register: result
+  until: result is succeeded
+  retries: 6
+  delay: 10
+  no_log: False
+
+- name: Add default_domain_suffix to sssd.conf
+  lineinfile:
+    dest: /etc/sssd/sssd.conf
+    line: 'default_domain_suffix = {{ active_directory_domain }}'
+    insertafter: '^\[sssd\]'
+  notify:
+    - restart sssd
+
+- name: Keep user directory simple
+  lineinfile:
+    regexp: "^fallback_homedir"
+    dest: /etc/sssd/sssd.conf
+    line: 'fallback_homedir = /home/%u'
+  notify:
+    - restart sssd
+
+- name: Ensure no DNS Reverse lookup
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^UseDNS"
+    line: "UseDNS no"
+    insertafter: EOF
+    state: present
+  notify:
+    - restart sshd
+
+- name: Ensure Challenge Response Auth is enabled so users can enter AD passwords
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^ChallengeResponseAuthentication"
+    line: "ChallengeResponseAuthentication yes"
+    state: present
+  notify:
+    - restart sshd
+
+- name: Enable SSSD In PAM
+  become: yes
+  command: authconfig --enablesssd --enablesssdauth --update
+  when: ansible_os_family == "RedHat"
+
+- name: Change access provider to simple
+  lineinfile:
+    regexp: "^access_provider"
+    dest: /etc/sssd/sssd.conf
+    line: 'access_provider = simple'
+  notify:
+    - restart sssd
+
+- name: Add allowed AD Groups to SSSD File
+  lineinfile:
+    regexp: "^simple_allow_groups"
+    dest: /etc/sssd/sssd.conf
+    line: "simple_allow_groups={{ ssh_allow_groups | join(',') | lower }}"
+  notify:
+    - restart sssd
+
+- name: Add AD Group to sudoers
+  lineinfile:
+    regexp: "^{{ item | lower }}"
+    dest: /etc/sudoers
+    line: "%{{ item | lower }}	ALL=(ALL)	ALL"
+    insertafter: '^%wheel'
+  with_items: "{{ ssh_sudo_groups }}"

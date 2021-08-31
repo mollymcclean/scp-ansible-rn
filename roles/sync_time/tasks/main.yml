@@ -1,0 +1,4 @@
+---
+- name: Sync the server time
+  become: yes
+  command: "/usr/sbin/ntpdate -u {{ ntp_servers[0] | regex_replace('iburst')}}"

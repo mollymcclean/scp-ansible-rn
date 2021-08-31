@@ -1,0 +1,29 @@
+- include: install.yml
+
+- name: Ensure harbor systemd file is present
+  become: yes
+  template:
+    src: harbor.service.j2
+    dest: /etc/systemd/system/harbor.service
+    mode: 0644
+  notify:
+    - reload harbor
+
+- name: Flush handlers to ensure harbor is started before configuring
+  meta: flush_handlers
+
+- name: Wait for harbor to start
+  uri:
+    url: "{{ 'https://' if harbor_ssl_enabled else 'http://'}}{{ harbor_domain }}"
+    status_code: 200
+    validate_certs: "{{ harbor_validate_certs }}"
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 1
+  # Force to run even if we are running in check mode as this isn't service affecting and we need a status to proceed
+  check_mode: no
+
+# Configure AD
+- include: ldap.yml
+  when: id_and_auth_service == 'active_directory'

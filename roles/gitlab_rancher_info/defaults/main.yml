@@ -1,0 +1,9 @@
+---
+gitlab_rancher_info_rancher_domain: rancher.example.com
+gitlab_rancher_info_bearer_token: my_rancher_bearer_token
+gitlab_rancher_info_cluster_name: mycluster
+gitlab_rancher_info_gitlab_url: http://gitlab.example.com
+gitlab_rancher_info_gitlab_api_token: XXXXXXXXX
+gitlab_rancher_info_variable_name: cluster_id
+gitlab_rancher_info_kubeconfig_variable_name: kubeconfig_foo
+gitlab_rancher_info_gitlab_group_name: fj-rkp

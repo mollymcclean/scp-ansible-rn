@@ -1,0 +1,12 @@
+plugin: community.vmware.vmware_vm_inventory
+strict: False
+hostname: ho-frn-1351-cti-vcsa1.domain.local
+username: SA-VSPHERE-INT@domain.local
+password: replacepassword
+validate_certs: False
+with_tags: True
+keyed_groups:
+- key: 'tags'
+  separator: ''
+filters:
+- "'env_in' in tags"

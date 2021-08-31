@@ -1,0 +1,30 @@
+- name: Update AD config
+  vars:
+    request:
+      auth_mode: "ldap_auth"
+      ldap_base_dn: "{{ harbor_ldap_base_dn }}"
+      ldap_filter: "{{ harbor_ldap_filter }}"
+      ldap_group_attribute_name: "sAMAccountName"
+      ldap_group_base_dn: "{{ harbor_ldap_group_base_dn}}"
+      ldap_group_admin_dn: "{{ harbor_ldap_group_admin_dn }}"
+      ldap_group_search_filter: "{{ harbor_ldap_group_search_filter }}"
+      ldap_group_membership_attribute: "memberof"
+      # This needs to be subtree so that we search in nested groups
+      ldap_group_search_scope: 2
+      ldap_scope: 2
+      ldap_search_dn: "{{ harbor_ldap_search_dn }}"
+      ldap_search_password: "{{ harbor_ldap_search_password}}"
+      ldap_uid: "sAMAccountName"
+      ldap_url: "{{ harbor_ldap_url }}"
+      token_expiration: 300
+  uri:
+    url: "{{ 'https://' if harbor_ssl_enabled else 'http://'}}{{ harbor_domain }}/api/v2.0/configurations"
+    method: PUT
+    validate_certs: "{{ harbor_validate_certs }}"
+    return_content: yes
+    headers:
+      Content-Type: "application/json"
+    body: "{{ request|to_json }}"
+    url_username: admin
+    url_password: "{{ harbor_admin_pw }}"
+    force_basic_auth: true

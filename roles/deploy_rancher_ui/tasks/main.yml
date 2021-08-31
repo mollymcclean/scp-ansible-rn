@@ -1,0 +1,74 @@
+---
+- name: Check if helm-templates exist on the Bastion server
+  command: '/bin/ls -l ~/helm-templates'
+  register: helm_templates_exist
+  changed_when: False
+  ignore_errors: True
+
+- name: Copy Rancher Helm charts to the Bastion server if not present
+  copy:
+    src: "{{ helm_chart_source }}"
+    dest: /home/{{ ansible_ssh_user }}/
+  when: helm_templates_exist is failed
+
+# TODO: This should be provided as an option to the cert_from_ca role
+- name: Ensure we can read all the certs
+  become: true
+  file:
+    path: "{{ deploy_rancher_ui_tls_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ ansible_ssh_user }}"
+    group: "{{ ansible_ssh_user }}"
+
+# TODO: If there is a change in the private CA event (i.e. a new ca cert) then we should restart all the rancher UI nodes
+#       per the instructions at https://rancher.com/docs/rancher/v2.x/en/installation/options/tls-secrets/
+
+- name: Check if Rancher UI namespace already exists
+  command: "kubectl --kubeconfig ~/.kube/config get namespace cattle-system"
+  register: rancher_ui_namespace
+  changed_when: False
+  ignore_errors: True
+
+- name: Deploy Rancher UI namespace
+  command: "kubectl --kubeconfig ~/.kube/config create namespace cattle-system"
+  when: rancher_ui_namespace is failed
+
+- name: Check if private CA exists
+  command: 'kubectl --kubeconfig ~/.kube/config get secret tls-ca -n cattle-system'
+  register: private_ca
+  changed_when: False
+  ignore_errors: True
+  when: deploy_rancher_ui_cert_type == 'custom-ca'
+
+- name: Set private CA into rancher
+  command: "kubectl --kubeconfig ~/.kube/config -n cattle-system create secret generic tls-ca --from-file={{ deploy_rancher_ui_tls_path }}/{{ private_ca_chain_cert_name }}"
+  when: deploy_rancher_ui_cert_type == 'custom-ca' and private_ca is failed
+
+- name: Deploy Rancher UI
+  command: "kubectl --kubeconfig ~/.kube/config -n cattle-system apply -R -f {{ deploy_rancher_ui_kube_directory }}"
+
+- name: Check if Rancher TLS cert exists
+  command: 'kubectl --kubeconfig ~/.kube/config get secret tls-rancher-ingress -n cattle-system'
+  register: rancher_ui_tls
+  changed_when: False
+  ignore_errors: True
+  when: deploy_rancher_ui_cert_type == 'custom-ca'
+
+- name: Configure Rancher TLS certs
+  command: "kubectl --kubeconfig ~/.kube/config -n cattle-system create secret tls tls-rancher-ingress --cert={{ deploy_rancher_ui_tls_path }}/rancher_ui.fullchain.crt --key={{ deploy_rancher_ui_tls_path }}/rancher_ui_private.key"
+  when: deploy_rancher_ui_cert_type == 'custom-ca' and rancher_ui_tls is failed
+
+- name: Ensure jq package is installed.
+  become: yes
+  package:
+    name: jq
+    state: present
+  tags:
+    - online_install
+
+- name: Cleanup temporary cert store
+  become: yes
+  file:
+    path: "{{ ca_certificates_local_dir }}"
+    state: absent

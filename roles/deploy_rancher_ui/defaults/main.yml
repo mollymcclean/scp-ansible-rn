@@ -1,0 +1,11 @@
+helm_chart_source: files/helm-templates
+
+deploy_rancher_ui_kube_directory: "/home/{{ ansible_ssh_user }}/helm-templates"
+
+# Either "self-signed", "lets-encrypt" or "custom-ca"
+deploy_rancher_ui_cert_type: custom-ca
+
+# Used when deploy_rancher_ui_cert_type is custom-ca
+deploy_rancher_ui_tls_path: /data/rancher-ui-ssl
+
+private_ca_cert_name: cacerts.pem

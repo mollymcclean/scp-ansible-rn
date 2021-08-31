@@ -1,0 +1,50 @@
+---
+- name: Create facts directory
+  become: yes
+  file:
+    group: root
+    mode: "u=rwx,go=rx"
+    owner: root
+    path: "{{ sentinel_facts_base_path }}"
+    state: directory
+
+- name: Create facts scripts for sentinel and redis
+  become: true
+  template:
+    src: "{{ item }}"
+    dest: "{{ sentinel_facts_base_path }}/{{ item | basename | replace('.j2', '') }}"
+    owner: root
+    group: root
+    mode: "u=rwx,go=rx"
+    setype: etc_t
+  notify: reload ansible_local facts
+  with_fileglob: "{{ role_path }}/templates/facts/*.j2"
+
+- name: reload ansible_local facts
+  become: true
+  setup:
+    filter: ansible_local
+
+- name: preselect a default redis hostname in case we can't find one
+  set_fact:
+    default_redis_host: "{{ groups['type_redis'] | sort | first }}"
+    cacheable: yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['type_redis'] | sort | intersect(ansible_play_hosts) }}"
+  run_once: yes
+
+# TODO: This deals with a happy case (i.e. all nodes are running with a given master) and a uninitialised case (we're
+#       building the cluster for the first time). However it doesn't deal with the medium case - where we may have a node
+#       down in the cluster.
+- name: set the master node variable
+  set_fact:
+    redis_master_node: "{{ hostvars[item]['ansible_local']['sentinel_cluster']['redis_master_node'] if hostvars[item]['ansible_local']['sentinel_cluster']['running'] else hostvars[default_redis_host]['ansible_default_ipv4']['address'] }}"
+    cacheable: yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['type_redis'] | sort | intersect(ansible_play_hosts) }}"
+  run_once: yes
+
+- name: Show facts
+  debug:
+    var: ansible_local
+    verbosity: 4

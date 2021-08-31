@@ -1,0 +1,20 @@
+---
+# On VMWare the config.name property holds the hostname.
+- name: Set hostname internally
+  set_fact:
+    update_hostname_hostname: "{{ hostvars[inventory_hostname]['config.name'] if 'config.name' in hostvars[inventory_hostname] else inventory_hostname }}"
+
+# Add host IP and hostname FQDN - if AD joined, or just hostanme if not, to /etc/hosts
+- name: "Update hosts file"
+  lineinfile:
+    dest: "/etc/hosts"
+    regexp: ".*{{ update_hostname_hostname }}$"
+    line: "{{ ansible_default_ipv4.address }} {{ update_hostname_hostname + '.' + hostname_active_directory_fqdn if (hostname_active_directory_fqdn | length > 0) else '' }} {{ update_hostname_hostname }}"
+    state: present
+
+# Set the hostname to the FQDN
+- name: "Set hostname"
+  hostname:
+    name: "{{ update_hostname_hostname }}{{ '.' + hostname_active_directory_fqdn if (hostname_active_directory_fqdn | length > 0) else '' }}"
+  notify:
+    - reboot

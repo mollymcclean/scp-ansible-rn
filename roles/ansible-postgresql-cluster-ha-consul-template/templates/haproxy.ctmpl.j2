@@ -1,0 +1,29 @@
+global
+    maxconn 1000
+
+defaults
+    log global
+    mode tcp
+    retries 2
+    timeout client 30m
+    timeout connect 4s
+    timeout server 30m
+    timeout check 5s
+
+listen stats
+    mode http
+    bind {{ postgres_cluster_floating_ip }}:7000
+    stats enable
+    stats uri /
+
+listen writer
+    bind {{ postgres_cluster_floating_ip }}:5432
+    option httpchk
+    http-check expect status 200{% raw %}{{ if keyExists "service/postgres/leader" }}{{$leader_fqdn := key "service/postgres/leader"}}
+    server {{$leader_fqdn}} {{with $d := printf "service/postgres/members/%s" $leader_fqdn | key | parseJSON}}{{$d.conn_url | regexReplaceAll "postgres://(.*)/postgres" "$1"}}{{end}} check port {{with $d := printf "service/postgres/members/%s" $leader_fqdn | key | parseJSON}}{{$d.api_url | regexReplaceAll "http://*.*.*.*:(.*)/patroni" "$1"}}{{end}}{{ end }} inter 3s fall 3 rise 2{% endraw %}
+
+listen reader
+    bind {{ postgres_cluster_floating_ip }}:5440
+    option httpchk
+    http-check expect status 503{%raw%}{{range ls "service/postgres/members"}}{{$leader_fqdn := key "service/postgres/leader"}}{{if ne .Key $leader_fqdn}}
+    server {{.Key}} {{with $d := printf "service/postgres/members/%s" .Key | key | parseJSON}}{{$d.conn_url | regexReplaceAll "postgres://(.*)/postgres" "$1"}}{{end}} check port {{with $d := printf "service/postgres/members/%s" $leader_fqdn | key | parseJSON}}{{$d.api_url | regexReplaceAll "http://*.*.*.*:(.*)/patroni" "$1"}}{{end}} inter 3s fall 3 rise 2{{end}}{{end}}{% endraw %}

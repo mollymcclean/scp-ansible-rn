@@ -1,0 +1,69 @@
+####################
+# Final Management #
+####################
+
+- name: Transfer helm charts to the Bastion node
+  hosts: type_bastion
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: rancher_helm_chart_transfer
+
+- name: Transfer Harbor imgages to the Bastion node
+  hosts: type_bastion
+  remote_user: "{{ remote_user }}"
+  roles:    
+    - role: harbor_push_images
+
+- name: Sync all server times to their clock source
+  hosts: all
+  remote_user: "{{ remote_user }}"
+  roles: 
+    - role: sync_time
+
+- name: Prepare the RKE nodes
+  hosts: type_rke
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: rancher_k8s_node_hardening
+    - role: rke
+
+- name: Provision the RKE K8s cluster and deploy Rancher
+  hosts: type_bastion
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: rancher_helm_setup
+      tags: ['online_install']
+    - role: cert_from_existing_ca
+      cert_from_ca_cert_name: rancher_ui
+      cert_from_ca_ssl_root_dir: "{{ deploy_rancher_ui_tls_path }}"
+      cert_from_ca_ssl_common_name: "{{ rancher_url }}"
+      cert_from_ca_chain_cert_pem_dest: rancher-ca-chain.cert.pem
+      when: deploy_rancher_ui_cert_type == 'custom-ca'
+    - role: provision_rke
+      rke_kubernetes_version: "{{ rancher_management_kubernetes_version }}"
+    - role: deploy_rancher_ui
+
+- name: Configure keepalived for the Rancher UI
+  hosts: type_rke
+  become: true
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: evrardjp.keepalived
+      keepalived_scripts:
+        rancher_check_script:
+          check_script: "{{ rancher_check_script }}"    
+      keepalived_instances:
+        rancher_internal:
+          interface: "{{ keepalived_instances_internal_interface }}"
+          advert_int: 1
+          state: BACKUP
+          virtual_router_id: "{{ rke_cluster_virtual_router_id }}"
+          priority: "{{ (play_hosts | length - play_hosts.index(inventory_hostname)) * 30 // (play_hosts|length) }}"
+          nopreempt: true
+          unicast_src_ip: "{{ hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
+          unicast_peers: "{{ play_hosts | map('extract', hostvars, 'guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address') | list }}"
+          track_scripts: 
+            - rancher_check_script
+          vips:
+            - "{{ rke_cluster_floating_ip }}"
+      when: deploy_rke_keepalived

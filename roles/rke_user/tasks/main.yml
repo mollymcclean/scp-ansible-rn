@@ -1,0 +1,41 @@
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Create system rancher user (both an admin and docker group)
+  become: true
+  user:
+    name: "{{ rke_user_username }}"
+    shell: /bin/bash
+    groups: "{{ rke_groups }}"
+    append: yes
+    generate_ssh_key: true
+  register: user_info
+
+- name: Set rancher user password expiry to never
+  become: true
+  chage:
+    user: "{{ rke_user_username }}"
+    sp_max: "-1"
+
+- name: Accumulate list of all the public keys on the RKE VMs
+  set_fact:
+    public_keys: "{{ ansible_play_hosts | map('extract', hostvars, 'user_info') | map(attribute='ssh_public_key') | list }}"
+  run_once: yes
+
+- name: Update SSH keys across VMs
+  become: yes
+  become_user: "{{ rke_user_username }}"
+  ansible.posix.authorized_key:
+    user: "{{ rke_user_username }}"
+    key: "{{ item }}"
+    state: present
+    exclusive: no
+  with_items: "{{ public_keys }}"
+  when: inventory_hostname not in groups['type_bastion']
+
+- name: Populate the Bastion's known_hosts file with the RKE nodes
+  become: true
+  become_user: "{{ rke_user_username }}"
+  shell: "touch /home/{{ rke_user_username }}/.ssh/known_hosts && ssh-keygen -t rsa -f /home/{{ rke_user_username }}/.ssh/known_hosts -R {{ hostvars[item]['ansible_default_ipv4']['address'] }} && ssh-keyscan -t rsa {{ hostvars[item]['ansible_default_ipv4']['address'] }} >> /home/{{ rke_user_username }}/.ssh/known_hosts"
+  with_items: "{{ groups['type_rke'] }}"
+  when: inventory_hostname in groups['type_bastion']

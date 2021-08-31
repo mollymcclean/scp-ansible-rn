@@ -1,0 +1,29 @@
+{{ ansible_managed | comment }}
+
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "{{ gitlab_runner_name }}"
+  url = "https://{{ gitlab_runner_gitlab_domain }}/"
+  token = "{{ gitlab_runner_response.runner.token }}"
+  executor = "{{ gitlab_runner_default_executor }}"
+  [runners.custom_build_dir]
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+{% if gitlab_runner_default_executor == "docker" %}
+  [runners.docker]
+    tls_verify = false
+    image = "{{ gitlab_runner_default_docker_image }}"
+    privileged = false
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = ["/cache"]
+    shm_size = 0
+    network_mode= "{{ gitlab_runner_docker_network_mode }}"
+{% endif %}

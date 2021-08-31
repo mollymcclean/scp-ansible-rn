@@ -1,0 +1,47 @@
+---
+- name: Extra Disk | Create a directory if it does not exist
+  become: true
+  file:
+    path: "{{ extra_disk_target_dir }}"
+    state: directory
+    owner: "{{ extra_disk_owner }}"
+    group: "{{ extra_disk_group }}"
+    mode: 0755
+
+- name: Scan VM to make new disk visible
+  become: true
+  shell: sh -c 'echo "- - -" > /sys/class/scsi_host/host2/scan'
+  changed_when: false
+
+- name: Extra Disk | Create partition on the disk
+  become: true
+  parted:
+    device: "{{ extra_disk_location }}"
+    number: 1
+    state: present
+    part_type: primary
+  register: partition
+
+- name: Extra Disk | Create a filesystem on the partition on the disk
+  become: true
+  filesystem:
+    fstype: "{{ extra_disk_fstype }}"
+    dev: "{{ partition.disk.dev }}1"
+  when: partition.changed
+
+# This also adds the disk into fstab
+- name: Extra Disk | Mount the disk
+  become: true
+  mount:
+    path: "{{ extra_disk_target_dir }}"
+    src: "{{ partition.disk.dev }}1"
+    fstype: "{{ extra_disk_fstype }}"
+    state: mounted
+
+- name: Restart any service dependency
+  become: true
+  systemd:
+    name: "{{ extra_disk_dependent_service }}"
+    daemon_reload: yes
+    state: restarted
+  when: extra_disk_dependent_service is defined and partition.changed

@@ -1,0 +1,56 @@
+---
+- name: create consul-template directory structure
+  file:
+    state: directory
+    path: "{{ item }}" 
+    owner: "consul"
+    group: "consul"
+  with_items: 
+    - "{{ consul_tpl_dirs }}"
+
+- name: check archive stat
+  stat: 
+    path: "{{ consul_tpl_area }}/{{ consul_tpl_archive_file }}"
+  register: consul_tpl_archive_stat
+
+- name: download consul-template binary
+  get_url:
+    url: "{{ consul_tpl_download_url }}"
+    dest: "{{ consul_tpl_area }}"
+  when: consul_tpl_archive_stat.stat.exists == False
+
+- name: unzip the downloaded package
+  unarchive:
+    src: "{{ consul_tpl_area }}/{{ consul_tpl_archive_file }}"
+    dest: "/usr/local/bin/"
+    owner: "root"
+    group: "root"
+    copy: False
+
+- name: copy consul-template systemd service configuration
+  template:
+    src: "{{ consul_tpl_name_service }}.service.j2"
+    dest: "/etc/systemd/system/{{ consul_tpl_name_service }}.service"
+    mode: 0755
+
+- name: consul-template config file
+  template:
+    src: "{{ consul_tpl_name_service }}.cfg.j2" 
+    dest: "{{ consul_tpl_home }}/config/{{ consul_tpl_name_service }}.cfg"
+    mode: 0755
+
+- name: consul-template config file
+  template:
+    src: haproxy.ctmpl.j2
+    dest: "{{ consul_tpl_home }}/templates/haproxy.ctmpl"
+
+- name: start consul sevice
+  systemd:
+    name: "{{ consul_tpl_name_service }}"
+    state: started
+    enabled: yes
+
+- name: Restart haproxy after generate cfg
+  systemd:
+    name: haproxy
+    state: restarted

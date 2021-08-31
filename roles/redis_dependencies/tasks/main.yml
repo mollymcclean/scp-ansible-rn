@@ -1,0 +1,14 @@
+---
+# Required to build redis 5 and higher
+- name: Install centos release
+  yum:
+    name: centos-release-scl
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: Install gcc and dependencies
+  yum:
+    name: devtoolset-8-gcc*
+    state: latest
+  when: ansible_os_family == "RedHat"
+

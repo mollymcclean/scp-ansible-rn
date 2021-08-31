@@ -1,0 +1,7 @@
+---
+ssh_ad_fqdn: example.com
+ssh_ad_join_username: service_account
+ssh_ad_join_password: sAmple-Passw0rd
+ssh_ad_ou_to_join: "OU=Computers,OU=XXXX,DC=XXXX,DC=XXXX"
+ssh_allow_groups: []
+ssh_sudo_groups: []

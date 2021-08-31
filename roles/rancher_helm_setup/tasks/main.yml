@@ -1,0 +1,77 @@
+---
+# This currently hardcodes all the helm calls as there are no helm 3 compatible ansible modules available although
+# hopefully these will become available in the not so distant future - see https://github.com/ansible-collections/kubernetes/issues/28
+# for more information
+#
+# This playbook should be run manually on a machine that has imnternet access and the resulting Helm charts transferred from the 
+# {{ rancher_helm_output_dir }} to the bastion server in the home directory of the  {{ remote_user }}
+
+- name: create temporary build directory
+  file:
+    path: "{{ rancher_helm_temp_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: create temporary directory for helm templates
+  file:
+    path: "{{ rancher_helm_output_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Check existing helm repos
+  command: helm repo list
+  changed_when: false
+  register: helm_repo_list
+
+- name: Add rancher upstream repo into helm
+  command: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+  when: "'rancher-stable' not in helm_repo_list.stdout"
+
+- name: Add cert manager upstream repo into helm
+  command: helm repo add jetstack https://charts.jetstack.io
+  when: (rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt') and 'jetstack' not in helm_repo_list.stdout
+
+- name: Update helm repos
+  command: helm repo update
+
+- name: Fetch the cert manager helm chart
+  command: "helm fetch jetstack/cert-manager --version {{ cert_manager_version }} --destination {{ rancher_helm_temp_dir }}"
+  when: rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt'
+
+- name: Fetch the rancher helm chart
+  command: "helm fetch rancher-stable/rancher --version {{ rancher_version }} --destination {{ rancher_helm_temp_dir }}"
+
+- name: Template the Helm Chart for Cert Manager
+  command: >
+    helm template cert-manager {{ rancher_helm_temp_dir }}/cert-manager-{{ cert_manager_version }}.tgz --output-dir {{ rancher_helm_output_dir }}
+      --namespace cert-manager --set image.repository={{ rancher_docker_registry }}/quay.io/jetstack/cert-manager-controller
+      --set webhook.image.repository={{ rancher_docker_registry }}/quay.io/jetstack/cert-manager-webhook
+      --set cainjector.image.repository={{ rancher_docker_registry }}/quay.io/jetstack/cert-manager-cainjector
+      --set installCRDs=true
+  when: rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt'
+
+# Setting private CA to true isn't a requirement for the secret ssl source however practically
+- name: Template the Helm Chart for Rancher
+  command: >
+    helm template rancher /tmp/helm-binaries/rancher-{{ rancher_version }}.tgz --output-dir {{ rancher_helm_output_dir }}
+      --namespace cattle-system
+      --set hostname={{ rancher_url }}
+      --set ingress.tls.source={{ rancher_tls_source }}
+      {{ '--set certmanager.version=' + cert_manager_version if rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt' else '' }}
+      {{ '--set privateCA=true' if rancher_tls_source == 'secret' else '' }}
+      --set rancherImage={{ rancher_docker_registry }}/{{ harbor_repo_path }}/rancher
+      --set systemDefaultRegistry={{ rancher_docker_registry }}
+      --set useBundledSystemChart=true
+      --set rancherImageTag=v{{ rancher_version }}
+      {{ '--set letsEncrypt.email=no-reply@cisc-uk.com' if rancher_tls_source == 'letsEncrypt' else '' }}
+
+- name: remove temp build directory
+  file:
+    path: "{{ rancher_helm_temp_dir }}"
+    state: absent
+
+- name: Fetch the cert-manager custom resource definitions
+  command: curl -kL https://raw.githubusercontent.com/jetstack/cert-manager/release-0.8/deploy/manifests/00-crds.yaml -o {{ rancher_helm_output_dir }}/cert-manager/00-crds.yaml
+  args:
+    warn: false
+  when: rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt'

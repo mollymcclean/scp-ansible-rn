@@ -1,0 +1,204 @@
+#!/bin/bash
+
+#--------------------Firewall for NAC--------------------#
+
+
+#--------------------------------------------------------#
+#------------------------CONTENTS------------------------#
+#--------------------------------------------------------#
+
+# [1000] PREROUTING CHIN
+# [1100] INPUT CHAIN
+# [1101] IN_ICMP CHAIN
+# [1102] IN_UDP CHAIN
+# [1103] IN_TCP CHAIN
+
+# [1200] FORWARD CHAIN
+# [1201] FW_ICMP CHAIN
+# [1202] FW_UDP CHAIN
+# [1203] FW_TCP CHAIN
+# [1204] FW_ALL CHAIN
+# [1205] FW_OPEN CHAIN
+
+# 1300] OUTPUT CHAIN
+# [1301] OUT_ICMP CHAIN
+# [1302] OUT_UDP CHAIN
+# [1303] OUT_TCP CHAIN
+
+# [1400] POSTROUTING CHAIN
+
+# [2000] SSH CHAIN
+
+
+#--------------------------------------------------------#
+#---------------------CONFIGURATION----------------------#
+#--------------------------------------------------------#
+
+sysctl net.ipv4.ip_forward=1    # Enable packet forwarding
+
+##==VARIABLES==##
+#Octets
+OCTET_1={{ octet_1 }}           # First octet of external network
+OCTET_2={{ octet_2 }}           # Second octet of external network
+OCTET_3={{ octet_3 }}           # Third octet of external network
+
+#Interfaces
+EXT_INT=ens160
+TRUST_INT=ens192
+
+#IP address
+EXT_ADDR={{ gateway_ip_address }}   # External IP address
+MANAGER_ADDR=${OCTET_1}.${OCTET_2}.${OCTET_3}.2 # Orch IP address
+{% if security_resource_address is defined %}
+#Unused functionality - This variable is only set during deployments via Jenkins
+#i.e. security_resources_address is set in the vars.yml.tmpl for a release package deployment.
+#Currently NACs can only be deployed via a Release Package, therefore this condition will never be met for any NAC
+MIRROR_ADDR={{ resources_address }},{{ security_resources_address }}    #Apt mirror and security mirrow
+{% else %}
+MIRROR_ADDR={{ resources_address }}     # Apt mirror
+{% endif %}
+DOCKER_ADDR={{ resources_address }}
+REPO_ADDR={{ resources_address }}
+NTP_ADDR={{ gateway_ip_address_default }}   # NTP server
+PROMON_ADDR={{ ext_syslog_server }}
+NDP_ADDR={{ NDP_address }}
+
+#Networks
+EXT_NET={{ external_network_address }}.0/24         # External network
+INTERAL_NET=${OCTET_1}.${OCTET_2}.${OCTET_3}.0/24   # Internal network
+
+##CLEAR FIREWALL RULES##
+iptables -t filter -F
+iptables -t nat -F
+iptables -t mangle -F
+
+##SETUP DEFAULT POLICY##
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
+##CREATE NEW CHAINS##
+iptables -t filter -N IN_ICMP
+iptables -t filter -N IN_UDP
+iptables -t filter -N IN_TCP
+iptables -t filter -N SSH
+iptables -t filter -N FW_ICMP
+iptables -t filter -N FW_UDP
+iptables -t filter -N FW_TCP
+iptables -t filter -N FW_ALL
+iptables -t filter -N FW_OPEN
+iptables -t filter -N OUT_ICMP
+iptables -t filter -N OUT_UDP
+iptables -t filter -N OUT_TCP
+
+#[1000]#==PREROUTING CHAIN==##
+#-----------------New rules go below here-----------------#
+{% if relaxed_firewall is defined %}
+  {% if relaxed_firewall is sameas true %}
+iptables -t nat -A PREROUTING -p tcp -d $EXT_ADDR --dport 22 -j DNAT --to-destination ${MANAGER_ADDR}:22    #SSH
+  {% else %}
+#iptables -t nat -A PREROUTING -p tcp -d $EXT_ADDR --dport 22 -j DNAT --to-destination ${MANAGER_ADDR}:22    #SSH
+  {% endif %}
+{% endif %}
+iptables -t nat -A PREROUTING -p tcp -d $EXT_ADDR --dport 443 -j DNAT --to-destination ${MANAGER_ADDR}:443    #All HTTPS traffic
+#-----------------New rules go above here-----------------#
+
+#[1100]#==INPUT CHAIN==##
+iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A INPUT -i lo -j ACCEPT
+iptables -t filter -A INPUT -s 127.0.0.0/8 -j DROP
+iptables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -t filter -A INPUT -p icmp -m conntrack --ctstate NEW -j IN_ICMP
+iptables -t filter -A INPUT -p udp -m conntrack --ctstate NEW -j IN_UDP
+iptables -t filter -A INPUT -p tcp -m conntrack --ctstate NEW -j IN_TCP
+iptables -t filter -A INPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]INPUT_denied: " --log-level 4
+iptables -t filter -A INPUT -j REJECT --reject-with icmp-proto-unreachable
+
+#[1101]#==IN_ICMP INPUT CHAIN==##
+iptables -t filter -A IN_ICMP -p icmp --icmp-type echo-request -m conntrack --ctstate NEW -j ACCEPT
+
+#[1102]#==IN_UDP INPUT CHAIN==##
+#-----------------New rules go below here-----------------#
+iptables -t filter -A IN_UDP -p udp -i $TRUST_INT -s $INTERNAL_INT --dport 53 NEW -j ACCEPT     # DNS
+iptables -t filter -A IN_UDP -p udp --dport 123 NEW -j ACCEPT                                   # NTP
+#-----------------New rules go above here-----------------#
+
+#[1103]#==IN_TCP INPUT CHAIN==##
+#-----------------New rules go below here-----------------#
+# SSH access for the gateway from the trusted interface in the Management network. Jumps to [2000] SSH CHAIN
+iptables -t filter -A IN_TCP -p tcp -i $TRUST_INT -s $INTERNAL_INT --dport 22 -m recent --set --name INTERNAL_SSH --rsource -j SSH 
+#-----------------New rules go above here-----------------#
+
+#[1200]#==FORWARD CHAIN==##
+iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A FORWARD -p icmp -m conntrack --ctstate NEW -j FW_ICMP
+iptables -t filter -A FORWARD -p udp -m conntrack --ctstate NEW -j FW_UDP
+iptables -t filter -A FORWARD -p tcp -m conntrack --ctstate NEW -j FW_TCP
+iptables -t filter -A FORWARD -m conntrack --ctstate NEW -j FW_OPEN
+iptables -t filter -A FORWARD -m limit --limit 3/min -j LOG --log-prefix "[ipt]FORWARD_denied: " --log-level 4
+iptables -t filter -A FORWARD -j REJECT --reject-with icmp-proto-unreachable
+
+#[1201]#==FW_ICMP FROWARD CHAIN - Control ICMP message across the subnets==##
+
+#[1202]#==FW_UDP FROWARD CHAIN - UDP forwarding chain for traffic routing through==##
+iptables -t filter -A FW_UDP -p udp -i $TRUST_INT -d $PROMOM_ADDR --dport 514 NEW -j ACCEPT
+
+#[1203]#==FW_TCP FROWARD CHAIN - TCP forwarding chain for traffic routing through==##
+{% if relaxed_firewall is defined %}
+  {% if relaxed_firewall is sameas true %}
+iptables -t filter -A FW_TCP -p tcp -i $EXT_INT -d $MANAGER_ADDR --dport 22 -j ACCEPT   # SSH once DNAT is complete
+  {% else %}
+#iptables -t filter -A FW_TCP -p tcp -i $EXT_INT -d $MANAGER_ADDR --dport 22 -j ACCEPT   # SSH once DNAT is complete
+  {% endif %}
+{% endif %}
+iptables -t filter -A FW_TCP -p tcp -i $EXT_INT -d $MANAGER_ADDR --dport 443 -j ACCEPT   # SSL for all HTTPS traffic once DNAT is complete
+
+iptables -t filter -A FW_TCP -p tcp -i $TRUST_INT -d ${MIRROR_ADDR},${DOCKER_ADDR},${REPO_ADDR} -m multiport --dports 80,443 NEW -j ACCEPT
+iptables -t filter -A FW_TCP -p tcp -i $TRUST_INT -d $DOCKER_ADDR --dport 9001 -j ACCEPT
+iptables -t filter -A FW_TCP -p tcp -i $TRUST_INT -d $MIRROR_ADDR --dport 9081 -j ACCEPT
+iptables -t filter -A FW_TCP -p tcp -i $TRUST_INT -d NDP_ADDR --dport 443 -j ACCEPT
+
+#[1204]#==FW_ALL FROWARD CHAIN - Forward chain for non protocol specific traffic routing through==##
+
+#[1205]#==FW_OPEN FROWARD CHAIN - Combines with PREROUTING to expose internal services to untrusted networks==##
+
+#[1300]#==OUTPUT CHAIN==##
+iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A OUTPUT -i lo -j ACCEPT
+iptables -t filter -A OUTPUT -p icmp -m conntrack --ctstate NEW -j OUT_ICMP
+iptables -t filter -A OUTPUT -p udp -m conntrack --ctstate NEW -j OUT_UDP
+iptables -t filter -A OUTPUT -p tcp -m conntrack --ctstate NEW -j OUT_TCP
+iptables -t filter -A OUTPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]OUTPUT_denied: " --log-level 4
+
+#[1301]#==OUT_ICMP OUTPUT CHAIN==##
+iptables -t filter -A OUT_ICMP -p icmp --icmp-type echo-request -j ACCEPT
+
+#[1302]#==OUT_UDP OUTPUT CHAIN==##
+iptables -t filter -A OUT_UDP -p udp -m addrtype --dst-type BROADCAST -j ACCEPT
+#-----------------New rules go below here-----------------#
+iptables -t filter -A OUT_UDP -p udp -d $NTP_ADDR --dport 123 NEW -j ACCEPT     # NTP access
+#-----------------New rules go above here-----------------#
+
+#[1303]#==OUT_TCP OUTPUT CHAIN==##
+#-----------------New rules go below here-----------------#
+iptables -t filter -A OUT_TCP -p tcp -d $MIRROR_ADDR --dport 80 NEW -j ACCEPT     # Mirror access
+iptables -t filter -A OUT_TCP -p tcp -d $MIRROR_ADDR --dport 22 NEW -j ACCEPT     # SSH from gateway
+#-----------------New rules go above here-----------------#
+
+#[1400]#==POSTROUTING==#
+#-----------------New rules go below here-----------------#
+iptables -t nat -A POSTROUTING -s $INTERNAL_NET -o $EXT_NET -j MASQUERADE
+#-----------------New rules go above here-----------------#
+
+#--------------------------------------------------------#
+#-------------NON ATTRIBUTABLE CHAINS BELOW--------------#
+#--------------------------------------------------------#
+
+#[2000]#==POSTROUTING==#
+iptables -t filter -A SSH -p tcp -m recent --rcheck --rsource --name INTERNAL_SSH -j LOG --log-prefix "[ipt]Internal_SSH_Login_src: " --log-level 4
+iptables -t filter -A SSH -p tcp -m recent --rcheck --name INTERNAL_SSH -j ACCEPT
+
+#--------------------------------------------------------#
+#--------------------------------------------------------#
+
+exit 0

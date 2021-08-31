@@ -1,0 +1,7 @@
+{
+  "insecure-registries": [
+{% for item in docker_insecure_registries %}
+    "{{ item }}"
+{% endfor %}
+  ]
+}

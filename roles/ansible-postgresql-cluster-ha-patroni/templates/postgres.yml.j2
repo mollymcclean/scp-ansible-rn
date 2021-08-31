@@ -1,0 +1,120 @@
+scope: {{ patroni_name_cluster }}
+name: {{ inventory_hostname }}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: {{ ansible_default_ipv4.address }}:8008
+
+consul:
+  host: {{ patroni_consul_ip_address }}:8500
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: false
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        max_connections: 1000
+        archive_mode: "on"
+        archive_command: mkdir -p ../wal_archive && cp %p ../wal_archive/%f
+        archive_timeout: 1800s
+        hot_standby: "on"
+        wal_log_hints: "on"
+        wal_level: hot_standby
+        wal_keep_segments: 12
+        max_wal_senders: 10
+        max_replication_slots: 10
+        config_file: {{ path_data_psql }}/postgresql.conf
+      recovery_conf:
+        restore_command: cp ../wal_archive/%f %p
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  pg_hba:
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+
+  # Some additional users users which needs to be created after initializing new cluster
+  users:
+    replicator:
+      password: {{ postgres_replicator_password }}
+      options:
+        - replication
+
+postgresql:
+  listen: 0.0.0.0:6543
+  connect_address: {{ ansible_default_ipv4.address }}:6543
+  data_dir: {{ path_data_psql }}
+  bin_dir: {{ postgresql_bin_dir }}
+  config_dir: {{ path_data_psql }}
+  restore: /usr/bin/patroni_wale_restore
+  pgpass: /tmp/.pgpass
+  pg_hba:
+    - local all postgres peer
+    - host replication replicator 127.0.0.1/32 md5
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+  authentication:
+    rewind:
+      username: replicator
+      password: {{ postgres_replicator_password }}
+    replication:
+      username: replicator
+      password: {{ postgres_replicator_password }}
+    superuser:
+      username: postgres
+      password: {{ postgres_superuser_password }}
+  parameters:
+    unix_socket_directories: '/tmp'
+    shared_buffers: {{ patroni_sb }}
+    work_mem: 32768kB
+    checkpoint_timeout: 30min
+    constraint_exclusion: partition
+    maintenance_work_mem: 2GB
+    effective_cache_size: 6GB
+    wal_buffers: -1
+    min_wal_size: 1GB
+    max_wal_size: 2GB
+    checkpoint_completion_target: 0.7
+    default_statistics_target: 100
+    autovacuum: "on"
+    autovacuum_work_mem: 1GB
+    autovacuum_vacuum_threshold: 50
+    autovacuum_vacuum_cost_limit: 2000
+    autovacuum_vacuum_scale_factor: 0.05
+    autovacuum_analyze_threshold: 50
+    autovacuum_analyze_scale_factor: 0.05
+    logging_collector: "on"
+    log_statement: "all"
+    log_duration: "on"
+    log_destination: "csvlog,stderr"
+    log_line_prefix: '[%t][%p][%c-%l][%x][%e]%q (%u, %d, %r, %a)'
+    log_directory: "/var/log/postgresql"
+    log_filename: 'postgresql.%a.log'
+    log_truncate_on_rotation: "on"
+    log_rotation_age: 1440
+    log_rotation_size: 0
+    log_min_duration_statement: '-1'
+    log_checkpoints: "on"
+    log_lock_waits: "on"
+    log_temp_files: 0
+    log_timezone: "UTC"
+    datestyle: "iso, mdy"
+    timezone: "UTC"
+    default_text_search_config: "pg_catalog.english"
+    synchronous_commit: "on"
+    synchronous_standby_names: "*"
+
+watchdog:
+  mode: off
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false

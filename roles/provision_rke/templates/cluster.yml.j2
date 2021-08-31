@@ -1,0 +1,191 @@
+{{ ansible_managed | comment }}
+
+nodes:
+{% for host in groups['type_rke'] | intersect(groups['type_env_' + environment_name]) %}
+{% if rke_provider == 'aws' %}
+  - address: "{{ hostvars[host]['ansible_host'] }}"
+    internal_address: "{{ hostvars[host]['private_ip_address'] }}"
+{% elif rke_provider == 'vsphere' %}
+  - address: "{{ hostvars[host]['guest.ipAddress'] }}"
+{% elif rke_provider == 'workstation' %}
+  - address: "{{ hostvars[host]['ansible_default_ipv4']['address'] }}"
+{% else %}
+  - address: "{{ hostvars[host]['ansible_host'] }}"
+{% endif %}
+    user: {{ rke_user_username }}
+    role: ['controlplane', 'etcd', 'worker']
+    ssh_key_path: /home/{{ rke_user_username }}/.ssh/id_rsa
+{% endfor %}
+
+kubernetes_version: "{{ rke_kubernetes_version }}"
+enable_network_policy: true
+default_pod_security_policy_template_id: "restricted"
+services:
+  etcd:
+    uid: 52034
+    gid: 52034
+  kube-api:
+    pod_security_policy: true
+    secrets_encryption_config:
+      enabled: true
+    audit_log:
+      enabled: true
+    event_rate_limit:
+      enabled: true
+{% if not rke_use_custom_certs %}
+  kube-controller:
+    extra_args:
+      feature-gates: "RotateKubeletServerCertificate=true"
+{% endif %}
+  kubelet:
+    # TODO: `generate_serving_certificate` should be enabled for all installs - however currently it doesn't work with
+    #       a CA chain of more than one certificate - so only use it on the self-signed clusters.
+{% if not rke_use_custom_certs %}
+    generate_serving_certificate: true
+{% endif %}
+    extra_args:
+{% if not rke_use_custom_certs %}
+      feature-gates: "RotateKubeletServerCertificate=true"
+{% endif %}
+      protect-kernel-defaults: "true"
+      tls-cipher-suites: "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256"
+    fail_swap_on: false
+# Taken from https://rancher.com/docs/rancher/v2.x/en/security/hardening-2.4/# but tiller roles removed as we only use
+# helm 3
+addons: |
+  ---
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ingress-nginx
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: default-psp-role
+    namespace: ingress-nginx
+  rules:
+  - apiGroups:
+    - extensions
+    resourceNames:
+    - default-psp
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: default-psp-rolebinding
+    namespace: ingress-nginx
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: default-psp-role
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+  ---
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: cattle-system
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: default-psp-role
+    namespace: cattle-system
+  rules:
+  - apiGroups:
+    - extensions
+    resourceNames:
+    - default-psp
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: default-psp-rolebinding
+    namespace: cattle-system
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: default-psp-role
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+  ---
+  apiVersion: policy/v1beta1
+  kind: PodSecurityPolicy
+  metadata:
+    name: restricted
+  spec:
+    requiredDropCapabilities:
+    - NET_RAW
+    privileged: false
+    allowPrivilegeEscalation: false
+    defaultAllowPrivilegeEscalation: false
+    fsGroup:
+      rule: RunAsAny
+    runAsUser:
+      rule: MustRunAsNonRoot
+    seLinux:
+      rule: RunAsAny
+    supplementalGroups:
+      rule: RunAsAny
+    volumes:
+    - emptyDir
+    - secret
+    - persistentVolumeClaim
+    - downwardAPI
+    - configMap
+    - projected
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: psp:restricted
+  rules:
+  - apiGroups:
+    - extensions
+    resourceNames:
+    - restricted
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: psp:restricted
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: psp:restricted
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+ignore_docker_version: false
+private_registries:
+  - url: {{ harbor_hostname }}{{ '' if harbor_ssl_enabled else ':80' }}/{{ harbor_repo_path }}
+    user: {{ harbor_rancher_username }}
+    password: '{{ harbor_rancher_password }}'
+    is_default: true

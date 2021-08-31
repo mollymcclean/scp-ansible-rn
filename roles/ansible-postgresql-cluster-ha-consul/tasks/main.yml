@@ -1,0 +1,78 @@
+---
+- name: Consul | Ensure Consul group
+  group:
+    name: "consul"
+
+- name: Consul | Ensure Consul user
+  user:
+    name: "consul"
+    group: "consul"
+    createhome: no
+
+- name: Check archive stat
+  stat:
+    path: "{{ consul_area }}/{{ consul_archive_file }}"
+  register: consul_archive_stat
+
+- name: Download consul binary
+  get_url:
+    url: "{{ consul_download_url }}"
+    dest: "{{ consul_area }}"
+  when: consul_archive_stat.stat.exists == False
+  tags:
+    - online_install
+
+- name: unzip the downloaded package
+  unarchive:
+    src: "{{ consul_area }}/{{ consul_archive_file }}"
+    dest: "/usr/local/bin/"
+    owner: "root"
+    group: "root"
+    copy: False
+
+- name: Create a directory if it does not exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+  with_items:
+    - "{{ consul_require_dirs }}"
+
+- name: "Generate uniq key for consul config"
+  shell: /usr/local/bin/consul keygen
+  register: CONSUL_UNIQ_KEY
+  delegate_to: "{{ groups[consul_group][0] }}"
+  run_once: true
+  check_mode: no
+
+- name: "Add uniq key for consul to dummy host"
+  add_host:
+    name: "CONSUL_DUMMY_HOLDER"
+    consul_uniq_key: "{{ CONSUL_UNIQ_KEY.stdout }}"
+  run_once: true
+
+- name: Copy config for consul
+  template:
+    src: config.json.j2
+    dest: "{{ consul_common_dir }}/config.json"
+    owner: consul
+    group: consul
+
+- name: Update consul permissions
+  file:
+    path: "{{ consul_data_dir }}"
+    state: directory
+    recurse: yes
+    mode: 0750
+
+- name: Create service for consul
+  template:
+    src: consul.service.j2
+    dest: "/etc/systemd/system/consul.service"
+
+- name: enable and start consul
+  systemd:
+    name: consul
+    state: started
+    enabled: yes

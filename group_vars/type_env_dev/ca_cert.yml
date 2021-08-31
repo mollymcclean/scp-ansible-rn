@@ -1,0 +1,8 @@
+---
+cert_from_ca_country_name: GB
+cert_from_ca_ssl_state_name: England
+cert_from_ca_locality_name: Berkshire
+cert_from_ca_organization_name: Automation Logic
+cert_from_ca_organizational_unit_name: Rancher
+cert_from_ca_dc_env: True
+cert_from_ca_dc_root_key_path: /var/tmp/rancher_certs

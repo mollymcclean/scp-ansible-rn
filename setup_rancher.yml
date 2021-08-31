@@ -1,0 +1,30 @@
+- hosts: type_bastion
+  remote_user: "{{ remote_user }}"
+  roles:
+    - role: rke_managed_cluster
+      rke_cluster_config_rancher_kubernetes_engine_config_cloud_provider_name: "{{ rke_provider }}"
+      rke_cluster_config_rancher_kubernetes_engine_config_addons: "{{ apps_cluster_addon_yaml }}"
+      rke_cluster_config_rancher_kubernetes_engine_config_kubernetes_version: "{{ apps_cluster_kubernetes_version }}"
+      rke_cluster_config_rancher_kubernetes_engine_config_private_registries: "{{ apps_cluster_private_registries }}"
+      rke_cluster_config_rancher_kubernetes_engine_config_ingress_provider: nginx
+      rke_cluster_config_rancher_kubernetes_engine_config_ingress_potions: "{{ apps_cluster_ingress_options }}"
+      rke_cluster_config_rancher_kubernetes_engine_config_ingress_extra_args: "{{ apps_cluster_ingress_extra_args }}"
+      rke_cluster_name: "{{ rancher_apps_cluster_name }}"
+      rke_control_plane_nodepool_prefix: "{{ dc_location | lower }}-{{ environment_name | lower | replace('_','-') }}-nap-controlplane"
+      rke_datastore: "{{ apps_cluster_datastore }}"
+      rke_etcd_nodepool_prefix: "{{ dc_location | lower }}-{{ environment_name | lower | replace('_','-') }}-nap-etcd"
+      rke_control_plane_node_template_name: "{{ rke_vsphere_k8s_control_node_template }}"
+      rke_etcd_node_template_name: "{{ rke_vsphere_k8s_control_node_template }}"
+      rke_worker_node_template_name: "{{ rke_vsphere_k8s_worker_node_template }}"
+      rke_network: "{{ apps_cluster_network }}"
+      rke_pool: "{{ apps_cluster_pool }}"
+      rke_template_name: NAP RKE Template
+      rke_template_version: "{{ apps_cluster_rke_template_version }}"
+      rke_control_plane_tags_vsphere: "{{ apps_cluster_control_plane_vsphere_tags }}"
+      rke_etcd_tags_vsphere: "{{ apps_cluster_etcd_vsphere_tags }}"
+      rke_worker_tags_vsphere: "{{ apps_cluster_worker_vsphere_tags }}"
+      rke_worker_nodepool_prefix: "{{ dc_location | lower }}-{{ environment_name | lower | replace('_','-') }}-nap-worker"
+      rke_worker_quantity: "{{ apps_cluster_worker_nodes }}"
+      rke_vapp_property: "{{ apps_cluster_rke_vapp_property }}"
+      rke_vcenter_default_datastore: "{{ apps_cluster_rke_vcenter_default_datastore }}"
+      when: rke_provider == 'vsphere'

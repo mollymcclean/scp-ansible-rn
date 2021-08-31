@@ -1,0 +1,6 @@
+provision_gitlab_gitlab_url: https://gitlab.example.com
+provision_gitlab_validate_certs: true
+provision_gitlab_access_token: true
+provision_gitlab_group_name: rkp
+
+provision_gitlab_gravatar_enabled: False

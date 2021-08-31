@@ -1,0 +1,316 @@
+---
+- name: Get RKE API token
+  rancher_get_api_token:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    rancher_username: "{{ rke_username }}"
+    rancher_password: "{{ rke_password }}"
+  register: rke_api_credentials
+
+- name: Create RKE cloud credentials
+  rancher_vsphere_cloud_credentials:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    credentials_name: "rke_vsphere_{{ rancher_apps_cluster_name }}"
+    vsphere_domain: "{{ rke_vcenter_domain }}"
+    vsphere_username: "{{ rke_vcenter_username }}"
+    vsphere_password: "{{ rke_vcenter_password }}"
+  register: rke_cloud_credentials
+
+- name: Create RKE template
+  rancher_create_rke_template:
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    name: "{{ rke_template_name }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+  register: rke_template_info
+
+- name: Create RKE template Version
+  rancher_create_rke_template_version:
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    cluster_config_default_cluster_role_for_project_members: "{{ rke_cluster_config_default_cluster_role_for_project_members }}"
+    cluster_config_enable_cluster_alerting: "{{ rke_cluster_config_enable_cluster_alerting }}"
+    cluster_config_enable_cluster_monitoring: "{{ rke_cluster_config_enable_cluster_monitoring }}"
+    cluster_config_enable_network_policy: "{{ rke_cluster_config_enable_network_policy }}"
+    cluster_config_rancher_kubernetes_engine_config_authentication_strategy: "{{ rke_cluster_config_rancher_kubernetes_engine_config_authentication_strategy }}"
+    cluster_config_rancher_kubernetes_engine_config_cloud_provider_name: "{{ rke_cluster_config_rancher_kubernetes_engine_config_cloud_provider_name }}"
+    cluster_config_rancher_kubernetes_engine_config_custom_addons: "{{ rke_cluster_config_rancher_kubernetes_engine_config_custom_addons }}"
+    cluster_config_rancher_kubernetes_engine_config_ignore_docker_version: "{{ rke_cluster_config_rancher_kubernetes_engine_config_ignore_docker_version }}"
+    cluster_config_rancher_kubernetes_engine_config_ingress_provider: "{{ rke_cluster_config_rancher_kubernetes_engine_config_ingress_provider }}"
+    cluster_config_rancher_kubernetes_engine_config_ingress_options: "{{ rke_cluster_config_rancher_kubernetes_engine_config_ingress_options }}"
+    cluster_config_rancher_kubernetes_engine_config_ingress_extra_args: "{{ rke_cluster_config_rancher_kubernetes_engine_config_ingress_extra_args }}"
+    cluster_config_rancher_kubernetes_engine_config_kubernetes_version: "{{ rke_cluster_config_rancher_kubernetes_engine_config_kubernetes_version }}"
+    cluster_config_rancher_kubernetes_engine_config_monitoring_provider: "{{ rke_cluster_config_rancher_kubernetes_engine_config_monitoring_provider }}"
+    cluster_config_rancher_kubernetes_engine_config_network_options_flannel_backend_type: "{{ rke_cluster_config_rancher_kubernetes_engine_config_network_options_flannel_backend_type }}"
+    cluster_config_rancher_kubernetes_engine_config_network_plugin: "{{ rke_cluster_config_rancher_kubernetes_engine_config_network_plugin }}"
+    cluster_config_rancher_kubernetes_engine_config_private_registries: "{{ rke_cluster_config_rancher_kubernetes_engine_config_private_registries }}"
+    cluster_config_rancher_kubernetes_engine_config_services_etcd_backup_config_enabled: "{{ rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_backup_config_enabled }}"
+    cluster_config_rancher_kubernetes_engine_config_services_etcd_creation: "{{ rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_creation }}"
+    cluster_config_rancher_kubernetes_engine_config_services_etcd_retention: "{{ rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_retention }}"
+    cluster_config_rancher_kubernetes_engine_config_services_kube_api_always_pull_images: "{{ rke_cluster_config_rancher_kubernetes_engine_config_services_kube_api_always_pull_images }}"
+    cluster_config_rancher_kubernetes_engine_config_services_kube_api_service_node_port_range: "{{ rke_cluster_config_rancher_kubernetes_engine_config_services_kube_api_service_node_port_range }}"
+    cluster_template_id: "{{ rke_template_info.rke_template_id }}"
+    enabled: "{{ rke_enabled }}"
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    vcenter_datacenter: "{{ rke_datacenter }}"
+    vcenter_default_datastore: "{{ rke_vcenter_default_datastore }}"
+    vcenter_domain: "{{ rke_vcenter_domain }}"
+    vcenter_folder: "{{ rke_vcenter_folder }}"
+    vcenter_password: "{{ rke_vcenter_password }}"
+    vcenter_tls_insecure: "{{ rke_vcenter_tls_insecure }}"
+    vcenter_username: "{{ rke_vcenter_username }}"
+    version_name: "{{ rke_template_version }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+  register: rke_version_info
+
+- name: RKE Managed Cluster | Create Node Template
+  rancher_ec2_node_template:
+    ami_id: "{{ rke_ami_id }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    block_duration_minutes: "{{ rke_block_duration_minutes }}"
+    cloud_credential_id: "{{ rke_cloud_credentials.id }}"
+    device_name: "{{ rke_device_name }}"
+    ec2_size: "{{ rke_ec2_size }}"
+    ec2_tags:
+      Type: kubecluster
+      Cluster: "{{ rke_cluster_tag }}"
+      Schedule: "{{ rke_schedule_tag }}"
+    encrypt_ebs_volumes: "{{ rke_encrypt_ebs_volumes }}"
+    endpoint: "{{ rke_endpoint }}"
+    engine_install_url: "{{ rke_engine_install_url }}"
+    insecure_transport: "{{ rke_insecure_transport }}"
+    insecure_registries: "{{ rke_insecure_registries }}"
+    iam_instance_profile: "{{ rke_iam_instance_profile }}"
+    keypair_name: "{{ rke_keypair_name }}"
+    monitoring: "{{ rke_monitoring }}"
+    name: "{{ rke_node_template_name }}"
+    private_address_only: "{{ rke_private_address_only }}"
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    region: "{{ rke_region }}"
+    region_zone: "{{ rke_region_zone }}"
+    request_spot_instance: "{{ rke_request_spot_instance }}"
+    retries: "{{ rke_retries }}"
+    root_size: "{{ rke_root_size }}"
+    security_groups:
+      - "{{ rke_security_group }}"
+    security_group_readonly: "{{ rke_security_group_readonly }}"
+    session_token: "{{ rke_session_token }}"
+    spot_price: "{{ rke_spot_price }}"
+    subnet_id: "{{ rke_subnet_id }}"
+    ssh_user: "{{ rke_ssh_user }}"
+    use_ebs_optimized_instances: "{{ rke_use_ebs_optimized_instances }}"
+    use_internal_ip_address: "{{ rke_use_internal_ip_address }}"
+    use_private_address: "{{ rke_use_private_address }}"
+    # Currently there's no differences between vSphere and AWS so we share cloud config files. In the future these
+    # may need to be separate
+    userdata: "{{ lookup('template', 'cloud-config.yml.j2') }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+    volume_type: "{{ rke_volume_type }}"
+    vpc_id: "{{ rke_vpc_id }}"
+  register: node_template_information_aws
+  when: rke_provider == 'aws'
+
+- name: RKE Managed Cluster | Create Node Control Plane Template
+  rancher_vsphere_node_template:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    # Currently there's no differences between vSphere and AWS so we share cloud config files. In the future these
+    # may need to be separate
+    cloud_config: "{{ lookup('template', 'cloud-config.yml.j2') }}"
+    clone_from: "{{ rke_clone_from }}"
+    cloud_init: "{{ rke_cloud_init }}"
+    cloud_credential_id: "{{ rke_cloud_credentials.id }}"
+    cpu_count: "{{ rke_control_plane_cpu_count }}"
+    creation_type: "{{ rke_creation_type }}"
+    datacentre: "{{ rke_datacenter }}"
+    datastore: "{{ rke_datastore }}"
+    disk_size: "{{ rke_disk_size }}"
+    engine_install_url: "{{ rke_engine_install_url }}"
+    folder: "{{ rke_folder }}"
+    insecure_registries: "{{ rke_insecure_registries }}"
+    memory_size: "{{ rke_control_plane_memory_size }}"
+    name: "{{ rke_control_plane_node_template_name }}"
+    network: "{{ rke_network }}"
+    pool: "{{ rke_pool }}"
+    ssh_password: "{{ rke_ssh_password }}"
+    ssh_port: "{{ rke_ssh_port }}"
+    ssh_user: "{{ rke_ssh_user }}"
+    ssh_user_group: "{{ rke_ssh_user_group }}"
+    tags: "{{ rke_control_plane_tags_vsphere }}"
+    use_internal_ip_address: "{{ rke_use_internal_ip_address }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+    vapp_ip_allocation_policy: "{{ rke_vapp_ip_allocation_policy }}"
+    vapp_ip_protocol: "{{ rke_vapp_ip_protocol }}"
+    vapp_transport: "{{ rke_vapp_transport }}"
+    vapp_property: "{{ rke_vapp_property }}"
+    vcenter: "{{ rke_vcenter_domain }}"
+    vcenter_port: "{{ rke_vcenter_port }}"
+    vsphere_config_param: "{{ rke_vsphere_config_param }}"
+  register: node_template_information_vsphere_control_plane
+  when: rke_provider == 'vsphere' or rke_provider == 'workstation'
+
+- name: RKE Managed Cluster | Create Node ETCD Template
+  rancher_vsphere_node_template:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    # Currently there's no differences between vSphere and AWS so we share cloud config files. In the future these
+    # may need to be separate
+    cloud_config: "{{ lookup('template', 'cloud-config.yml.j2') }}"
+    clone_from: "{{ rke_etcd_clone_from }}"
+    cloud_init: "{{ rke_cloud_init }}"
+    cloud_credential_id: "{{ rke_cloud_credentials.id }}"
+    cpu_count: "{{ rke_etcd_cpu_count }}"
+    creation_type: "{{ rke_creation_type }}"
+    datacentre: "{{ rke_datacenter }}"
+    datastore: "{{ rke_datastore }}"
+    disk_size: "{{ rke_disk_size }}"
+    engine_install_url: "{{ rke_engine_install_url }}"
+    folder: "{{ rke_folder }}"
+    insecure_registries: "{{ rke_insecure_registries }}"
+    memory_size: "{{ rke_etcd_memory_size }}"
+    name: "{{ rke_etcd_node_template_name }}"
+    network: "{{ rke_network }}"
+    pool: "{{ rke_pool }}"
+    ssh_password: "{{ rke_ssh_password }}"
+    ssh_port: "{{ rke_ssh_port }}"
+    ssh_user: "{{ rke_ssh_user }}"
+    ssh_user_group: "{{ rke_ssh_user_group }}"
+    tags: "{{ rke_etcd_tags_vsphere }}"
+    use_internal_ip_address: "{{ rke_use_internal_ip_address }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+    vapp_ip_allocation_policy: "{{ rke_vapp_ip_allocation_policy }}"
+    vapp_ip_protocol: "{{ rke_vapp_ip_protocol }}"
+    vapp_transport: "{{ rke_vapp_transport }}"
+    vapp_property: "{{ rke_vapp_property }}"
+    vcenter_port: "{{ rke_vcenter_port }}"
+    vsphere_config_param: "{{ rke_vsphere_config_param }}"
+  register: node_template_information_vsphere_etcd
+  when: rke_provider == 'vsphere' or rke_provider == 'workstation'
+
+- name: RKE Managed Cluster | Create Node Template Worker Nodes
+  rancher_vsphere_node_template:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    # Currently there's no differences between vSphere and AWS so we share cloud config files. In the future these
+    # may need to be separate
+    cloud_config: "{{ lookup('template', 'cloud-config.yml.j2') }}"
+    clone_from: "{{ rke_worker_clone_from }}"
+    cloud_init: "{{ rke_cloud_init }}"
+    cloud_credential_id: "{{ rke_cloud_credentials.id }}"
+    cpu_count: "{{ rke_worker_cpu_count }}"
+    creation_type: "{{ rke_creation_type }}"
+    datacentre: "{{ rke_datacenter }}"
+    datastore: "{{ rke_datastore }}"
+    disk_size: "{{ rke_disk_size }}"
+    engine_install_url: "{{ rke_engine_install_url }}"
+    folder: "{{ rke_folder }}"
+    insecure_registries: "{{ rke_insecure_registries }}"
+    memory_size: "{{ rke_worker_memory_size }}"
+    name: "{{ rke_worker_node_template_name }}"
+    network: "{{ rke_network }}"
+    pool: "{{ rke_pool }}"
+    ssh_password: "{{ rke_ssh_password }}"
+    ssh_port: "{{ rke_ssh_port }}"
+    ssh_user: "{{ rke_ssh_user }}"
+    ssh_user_group: "{{ rke_ssh_user_group }}"
+    tags: "{{ rke_worker_tags_vsphere }}"
+    use_internal_ip_address: "{{ rke_use_internal_ip_address }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+    vapp_ip_allocation_policy: "{{ rke_vapp_ip_allocation_policy }}"
+    vapp_ip_protocol: "{{ rke_vapp_ip_protocol }}"
+    vapp_transport: "{{ rke_vapp_transport }}"
+    vapp_property: "{{ rke_vapp_property }}"
+    vcenter_port: "{{ rke_vcenter_port }}"
+    vsphere_config_param: "{{ rke_vsphere_config_param }}"
+  register: node_template_information_vsphere_worker
+  when: rke_provider == 'vsphere' or rke_provider == 'workstation'
+
+- name: RKE Managed Cluster | Create Cluster
+  rancher_cluster:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    name: "{{ rke_cluster_name }}"
+    rke_template_revision_id: "{{ rke_version_info.rke_revision_id }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+  register: cluster_information
+
+- name: Add Node Pools To Cluster
+  rancher_manage_nodepool:
+    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+    api_bearer_token: "{{ rke_api_credentials.token }}"
+    control_plane: "{{ rke_control_plane }}"
+    control_plane_quantity: "{{ rke_control_plane_quantity }}"
+    control_plane_nodepool_prefix: "{{ rke_control_plane_nodepool_prefix }}"
+    control_plane_node_template_id: "{{ node_template_information_vsphere_control_plane.node_template_id if rke_provider == 'vsphere' else node_template_information_vsphere_control_plane.node_template_id if rke_provider == 'workstation' else node_template_information_aws.node_template_id }}"
+    etcd: "{{ rke_etcd }}"
+    etcd_quantity: "{{ rke_etcd_quantity }}"
+    etcd_nodepool_prefix: "{{ rke_etcd_nodepool_prefix }}"
+    etcd_node_template_id: "{{ node_template_information_vsphere_etcd.node_template_id if rke_provider == 'vsphere' else node_template_information_vsphere_control_plane.node_template_id if rke_provider == 'workstation' else node_template_information_aws.node_template_id }}"
+    node_pool_name_prefix: "{{ rke_cluster_name }}-"
+    worker: "{{ rke_worker }}"
+    worker_quantity: "{{ rke_worker_quantity }}"
+    worker_nodepool_prefix: "{{ rke_worker_nodepool_prefix }}"
+    worker_node_template_id: "{{ node_template_information_vsphere_worker.node_template_id if rke_provider == 'vsphere' else node_template_information_vsphere_control_plane.node_template_id if rke_provider == 'workstation' else node_template_information_aws.node_template_id }}"
+    delete_not_ready_after_secs: "{{ rke_delete_not_ready_after_secs }}"
+    type: "{{ rke_type }}"
+    cluster_id: "{{ cluster_information.cluster_id }}"
+    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+
+#- name: Enable cluster monitoring
+#  rancher_monitoring:
+#    rancher_domain: "{{ rke_managed_cluster_rancher_domain }}"
+#    rancher_cluster_id: "{{ cluster_information.cluster_id }}"
+#    api_bearer_token: "{{ rke_api_credentials.token }}"
+#    enable_monitoring: "{{ rke_enable_monitoring }}"
+#    validate_certs: "{{ rke_validate_rancher_ssl_cert }}"
+
+- name: Wait for managed cluster to reach the updating state
+  uri:
+    url: "https://{{ rancher_url }}/v3/clusters/{{ json_project_response.json.projectId }}"
+    return_content: yes
+    validate_certs: no
+    headers:
+      Authorization: "Bearer {{ rke_api_credentials.token }}"
+  register: cluster_state
+  until: "'state:active' in cluster_state.content"
+  retries: 10
+  delay: 60
+
+- name: Create Longhorn project
+  uri:
+    url: "https://{{ rancher_url }}/v3/projects"
+    return_content: yes
+    body: 
+      clusterId: "{{ cluster_information.cluster_id }}"
+      containerDefaultResourceLimit: null
+      description: "Longhorn storage for persistent volumes"
+      enableProjectMonitoring: false
+      name: "Longhorn"
+      namespaceDefaultResourceQuota: null
+      namespaceId: ""
+      resourceQuota: null
+    body_format: json
+    method: POST
+    status_code: 201
+    validate_certs: no
+    headers:
+      Authorization: "Bearer {{ rke_api_credentials.token }}"
+  register: json_project_response
+
+- name: Create longhorn-system namespace in Longhorn project
+  uri:
+    url: "https://{{ rancher_url }}/v3/clusters/{{ cluster_information.cluster_id }}/namespace"
+    return_content: yes
+    body: 
+      type: "namespace"
+      name: "longhorn-system"
+      clusterId: "{{ cluster_information.cluster_id }}"
+      projectId: "{{ json_project_response.json.projectId }}"
+      resourceQuota: null
+      labels: {}
+    body_format: json
+    method: POST
+    status_code: 201
+    validate_certs: no
+    headers:
+      Authorization: "Bearer {{ rke_api_credentials.token }}"
+  register: json_project_response

@@ -1,0 +1,21 @@
+# This transfers the Rancher Helm charts to the Bastion server ready for the
+# final_management.yml playbook to me run.
+
+- name: Create Helm chart directory on Bastion node
+  ansible.builtin.file:
+    path: "/home/{{ remote_user }}/helm-templates/"
+    owner: "{{ remote_user }}"
+    group: "{{ remote_user }}"
+    mode: '0750'
+    state: directory    
+
+- name: Transfer helm charts to the Bastion node
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/home/{{ remote_user }}/helm-templates"
+    owner: "{{ remote_user }}"
+    group: "{{ remote_user }}"
+    mode: '0640'
+    backup: yes
+  with_fileglob:
+    - "../templates/*"

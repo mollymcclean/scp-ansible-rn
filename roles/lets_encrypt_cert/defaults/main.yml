@@ -1,0 +1,12 @@
+lets_encrypt_cert_name: my-certificate
+lets_encrypt_certs_path: /etc/ssl/certs
+lets_encrypt_rsa_account_key_path: "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}_account.key"
+lets_encrypt_rsa_private_key_path: "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}_private.key"
+lets_encrypt_csr_path:  "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}.csr"
+lets_encrypt_crt_dest: "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}.crt"
+lets_encrypt_acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
+lets_encrypt_fullchain_dest: "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}.fullchain.crt"
+lets_encrypt_domain: gitlab.example.com
+lets_encrypt_r53_zone: example.com
+lets_encrypt_cert_email: "no-reply@rancher.lab.int"
+lets_encrypt_chain_dest: "{{ lets_encrypt_certs_path }}/{{ lets_encrypt_cert_name }}.intermediate.crt"

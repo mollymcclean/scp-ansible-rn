@@ -1,0 +1,2 @@
+---
+cert_from_ca_s3_root: "{{ environment_name }}"

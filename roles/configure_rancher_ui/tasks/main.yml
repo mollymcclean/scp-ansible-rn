@@ -1,0 +1,96 @@
+---
+##############################################################
+# Configure the Rancher admin user password, URL & telemetry #
+##############################################################
+- name: Configure Rancher UI
+  block:
+    - name: Get Login Token
+      uri:
+        url: "https://{{ rancher_url }}/v3-public/localProviders/local?action=login"
+        return_content: yes
+        body: "{ 'username': 'admin', 'password': '{{ rke_initial_password }}'}"
+        body_format: json
+        method: POST
+        status_code: 201
+        validate_certs: no
+      register: json_response
+      retries: 5
+      delay: 10
+  
+    - name: Set Rancher Login Token
+      set_fact:
+        rancher_login_token: "{{ json_response.json.token }}"
+  
+    - name: Change admin Password
+      uri:
+        url: "https://{{ rancher_url }}/v3/users?action=changepassword"
+        return_content: yes
+        body: 
+          currentPassword: "{{ rke_initial_password }}"
+          newPassword: "{{ rke_password }}"
+        body_format: json
+        method: POST
+        status_code:
+        - 200
+        - 201
+        - 422
+        validate_certs: no
+        headers:
+          Authorization: "Bearer {{ rancher_login_token }}"
+  
+    - name: Create API Key
+      uri:
+        url: "https://{{ rancher_url }}/v3/token"
+        return_content: yes
+        body:
+          description: ansible_automation
+        body_format: json
+        method: POST
+        status_code: 
+        - 201
+        validate_certs: no
+        headers:
+          Authorization: "Bearer {{ rancher_login_token }}"
+      register: json_response
+    
+    - name: Set Rancher API
+      set_fact:
+        rancher_api_token: "{{ json_response.json.token }}"
+    
+    - name: Add RANCHER_TOKEN_HOLDER dummy host
+      add_host:
+        name: "RANCHER_TOKEN_HOLDER"
+        api_token: "{{ rancher_api_token }}"
+    
+    - name: Change server-url
+      uri:
+        url: "https://{{ rancher_url }}/v3/settings/server-url"
+        return_content: yes
+        body: 
+          value: "https://{{ rancher_url }}"
+        body_format: json
+        method: PUT
+        status_code:
+         - 200
+        validate_certs: no
+        headers:
+          Authorization: "Bearer {{ rancher_api_token }}"
+    
+    - name: Telemetry opt-in/out
+      uri:
+        url: "https://{{ rancher_url }}/v3/settings/telemetry-opt"
+        return_content: yes
+        body: 
+          value: "{{ rancher_telemetry }}"
+        body_format: json
+        method: PUT
+        status_code:
+         - 200
+        validate_certs: no
+        headers:
+          Authorization: "Bearer {{ rancher_api_token }}"
+  
+  rescue:
+    - name: Returning Rancher UI config status
+      debug:
+        msg: "Skipping Rancher UI config. The admin password may already have been changed."

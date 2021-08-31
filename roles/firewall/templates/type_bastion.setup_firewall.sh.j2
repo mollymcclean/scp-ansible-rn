@@ -1,0 +1,161 @@
+#!/bin/bash
+
+#--------------------Firewall for NAC--------------------#
+
+
+#--------------------------------------------------------#
+#------------------------CONTENTS------------------------#
+#--------------------------------------------------------#
+
+# [1000] PREROUTING CHIN
+# [1100] INPUT CHAIN
+# [1101] IN_ICMP CHAIN
+# [1102] IN_UDP CHAIN
+# [1103] IN_TCP CHAIN
+
+# [1200] FORWARD CHAIN
+# [1201] FW_ICMP CHAIN
+# [1202] FW_UDP CHAIN
+# [1203] FW_TCP CHAIN
+# [1204] FW_ALL CHAIN
+# [1205] FW_OPEN CHAIN
+
+# 1300] OUTPUT CHAIN
+# [1301] OUT_ICMP CHAIN
+# [1302] OUT_UDP CHAIN
+# [1303] OUT_TCP CHAIN
+
+# [1400] POSTROUTING CHAIN
+
+# [2000] SSH CHAIN
+
+
+#--------------------------------------------------------#
+#---------------------CONFIGURATION----------------------#
+#--------------------------------------------------------#
+
+##==VARIABLES==##
+
+#Interfaces
+EXT_INT=ens160                                              # Internet facing interface
+TRUST_INT=ens192                                            # Internally facing interface
+
+#IP addresses
+EXT_ADDR={{ hostvars[groups['type_bastion'][0]]['guest.ipAddress'] }}
+APP_INGRESS_ADDR="{{ lookup('dig', rke_vcenter_domain) }}"
+APPGW_EXT_ADDR={{ hostvars[groups['type_app_gateway'][0]]['guest.ipAddress'] }}
+
+# Networks
+INTERNAL_NET={{ internal_ipv4_range }}                      # Internal network range
+
+##CLEAR FIREWALL RULES##
+iptables -t filter -F
+iptables -t nat -F
+iptables -t mangle -F
+
+##SETUP DEFAULT POLICY##
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
+##CREATE NEW CHAINS##
+iptables -t filter -N IN_ICMP
+iptables -t filter -N IN_UDP
+iptables -t filter -N IN_TCP
+iptables -t filter -N SSH
+
+iptables -t filter -N FW_ICMP
+iptables -t filter -N FW_UDP
+iptables -t filter -N FW_TCP
+iptables -t filter -N FW_ALL
+iptables -t filter -N FW_OPEN
+
+iptables -t filter -N OUT_ICMP
+iptables -t filter -N OUT_UDP
+iptables -t filter -N OUT_TCP
+
+#[1000]#==PREROUTING CHAIN==##
+
+#[1100]#==INPUT CHAIN==##
+iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A INPUT -i lo -j ACCEPT
+iptables -t filter -A INPUT -s 127.0.0.0/8 -j DROP
+iptables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -t filter -A INPUT -p icmp -m conntrack --ctstate NEW -j IN_ICMP
+iptables -t filter -A INPUT -p udp -m conntrack --ctstate NEW -j IN_UDP
+# The below rule Checks to see if TCP flags FIN, SYN, RST and ACK are set, but will only accept if SYN is the only flag set.
+iptables -t filter -A INPUT -p tcp --tcp-flags FIN,SYN,RST,ACK,SYN -m conntrack --ctstate NEW -j IN_TCP
+iptables -t filter -A INPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]INPUT_denied: " --log-level 4
+iptables -t filter -A INPUT -j REJECT --reject-with icmp-proto-unreachable
+
+#[1101]#==IN_ICMP INPUT CHAIN - Controls ICMP traffic destined for the VM==##
+iptables -t filter -A IN_ICMP -p icmp --icmp-type echo-request -m conntrack --ctstate NEW -j ACCEPT
+
+#[1102]#==IN_UDP INPUT CHAIN== - Controls UDP traffic destined for the VM##
+iptables -t filter -A IN_UDP -p udp -m addrtype --dst-type BROADCAST -j ACCEPT
+iptables -t filter -A IN_UDP -p udp -i $TRUST_INT -j ACCEPT
+
+#[1103]#==IN_TCP INPUT CHAIN - Controls TCP traffic destined for the VM==##
+iptables -t filter -A IN_TCP -p tcp -i $TRUST_INT -s $INTERNAL_NET --dport 22 -m recent --set --name INTERNAL_SSH --rsource -j SSH -m comment --comment "SSH traffic from internal network"
+iptables -t filter -A IN_TCP -p tcp -i $EXT_INT --dport 22 -m recent --set --name EXTERNAL_SSH --rsource -j SSH -m comment --comment "SSH traffic from external network"
+
+#[1200]#==FORWARD CHAIN==##
+iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A FORWARD -p icmp -m conntrack --ctstate NEW -j FW_ICMP
+iptables -t filter -A FORWARD -p udp -m conntrack --ctstate NEW -j FW_UDP
+iptables -t filter -A FORWARD -p tcp -m conntrack --ctstate NEW -j FW_TCP
+iptables -t filter -A FORWARD -m conntrack --ctstate NEW -j FW_ALL
+iptables -t filter -A FORWARD -i $EXT_INT -m conntrack --ctstate NEW -j FW_OPEN
+iptables -t filter -A FORWARD -m limit --limit 3/min -j LOG --log-prefix "[ipt]FORWARD_denied: " --log-level 4
+iptables -t filter -A FORWARD -j REJECT --reject-with icmp-proto-unreachable
+
+#[1201]#==FW_ICMP FROWARD CHAIN - Control ICMP message across the subnets==##
+
+#[1202]#==FW_UDP FROWARD CHAIN - UDP forwarding chain for traffic routing through==##
+
+#[1203]#==FW_TCP FROWARD CHAIN - TCP forwarding chain for traffic routing through==##
+iptables -t filter -A FW_TCP -p tcp -i $TRUST_INT -d $VSPHERE_ADDR --dport 443 -j ACCEPT
+
+#[1204]#==FW_ALL FROWARD CHAIN - Forward chain for non protocol specific traffic routing through==##
+
+#[1205]#==FW_OPEN FROWARD CHAIN - Combines with PREROUTING to expose internal services to untrusted networks==##
+
+#[1300]#==OUTPUT CHAIN==##
+iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+iptables -t filter -A OUTPUT -i lo -j ACCEPT
+iptables -t filter -A OUTPUT -p icmp -m conntrack --ctstate NEW -j OUT_ICMP
+iptables -t filter -A OUTPUT -p udp -m conntrack --ctstate NEW -j OUT_UDP
+iptables -t filter -A OUTPUT -p tcp -m conntrack --ctstate NEW -j OUT_TCP
+iptables -t filter -A OUTPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]OUTPUT_denied: " --log-level 4
+
+#[1301]#==OUT_ICMP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_ICMP -p icmp --icmp-type echo-request -j ACCEPT
+
+#[1302]#==OUT_UDP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_UDP -p udp -m addrtype --dst-type BROADCAST -j ACCEPT
+iptables -t filter -A OUT_UDP -p udp -d $INTERNAL_NET -j ACCEPT
+
+#[1303]#==OUT_TCP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_TCP -p tcp -d $VSPHERE_ADDR --dport 443 -j ACCEPT -m comment --comment "vSphere API access"
+iptables -t filter -A OUT_TCP -p tcp -d $INTERNAL_NET --dport 22 -j ACCEPT -m comment --comment "Outbound SSH from this host"
+# The VMware plugin for ansible outputs the primary (external) IP address for the app gateway instance, and so provisions via the external interface
+iptables -t filter -A OUT_TCP -p tcp -d $EXT_NET -d $APPGW_EXT_ADDR --dport 22 -j ACCEPT -m comment --comment "Outbound SSH to app gateway external IP"
+iptables -t filter -A OUT_TCP -p tcp -d $INTERNAL_NET -j ACCEPT -m comment --comment "Traffic to the internal NAP VMs"
+
+#[1400]#==POSTROUTING==#
+iptables -t nat -A POSTROUTING -s $INTERNAL_NET -o $EXT_NET -j MASQUERADE
+
+#--------------------------------------------------------#
+#-------------NON ATTRIBUTABLE CHAINS BELOW--------------#
+#--------------------------------------------------------#
+
+#[2000]#==POSTROUTING==#
+iptables -t filter -A SSH -p tcp -m recent --rcheck --rsource --name INTERNAL_SSH -j LOG --log-prefix "[ipt]Internal_SSH_Login_src: " --log-level 4
+iptables -t filter -A SSH -p tcp -m recent --rcheck --name INTERNAL_SSH -j ACCEPT
+iptables -t filter -A SSH -p tcp -m recent --rcheck --rsource --name EXTERNAL_SSH -j LOG --log-prefix "[ipt]Internal_SSH_Login_src: " --log-level 4
+iptables -t filter -A SSH -p tcp -m recent --rcheck --name EXTERNAL_SSH -j ACCEPT
+
+#--------------------------------------------------------#
+#--------------------------------------------------------#
+
+exit 0

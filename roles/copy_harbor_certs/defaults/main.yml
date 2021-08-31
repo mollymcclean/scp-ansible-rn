@@ -1,0 +1,1 @@
+harbor_user: "{{ ansible_ssh_user }}"

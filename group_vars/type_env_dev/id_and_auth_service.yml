@@ -1,0 +1,9 @@
+---
+# This parameter determines the ID & auth default provider for all environments. Options are:
+# open_ldap_auth
+# active_directory
+# This can be overridden for a specific environment by specifying the parameter within an 
+# environment's group_vars file.
+
+#id_and_auth_service: active_directory
+id_and_auth_service: ""

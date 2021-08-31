@@ -1,0 +1,5 @@
+---
+rke_initial_password: admin
+rke_username: admin
+rke_admin_password: Password123456
+rancher_telemetry: out

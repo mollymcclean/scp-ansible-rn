@@ -1,0 +1,58 @@
+---
+- name: Create SSL configuration folder.
+  become: yes
+  file:
+    # /etc/ssl is the role default
+    path: "{{ cert_from_ca_ssl_root_dir }}"
+    state: directory
+    mode: 0750
+
+- name: Create SSL configuration intermediate folder.
+  become: yes
+  file:
+    # /etc/ssl/intermediate is the role default
+    path: "{{ cert_from_ca_ssl_intermediate_dir }}"
+    state: directory
+    mode: 0750
+
+- name: Generate an OpenSSL private key with 4096 bits
+  become: yes
+  openssl_privatekey:
+    # /etc/ssl/mycert_private.key is the role default
+    path: "{{ cert_from_ca_rsa_private_key_path }}"
+    size: 4096
+    type: RSA
+
+- name: Generate an OpenSSL Certificate Signing Request with Subject information
+  become: yes
+  openssl_csr:
+    path: "{{ cert_from_ca_csr_path }}"
+    privatekey_path: "{{ cert_from_ca_rsa_private_key_path }}"
+    country_name: "{{ cert_from_ca_country_name }}"
+    organization_name: "{{ cert_from_ca_organization_name }}"
+    organizational_unit_name: "{{ cert_from_ca_organizational_unit_name }}"
+    common_name: "{{ cert_from_ca_ssl_common_name }}"
+    state_or_province_name: "{{ cert_from_ca_ssl_state_name }}"
+    locality_name: "{{ cert_from_ca_locality_name }}"
+
+- name: Generate an OpenSSL certificate signed with your own CA certificate
+  become: yes
+  openssl_certificate:
+    path: "{{ cert_from_ca_cert_path }}"
+    csr_path: "{{ cert_from_ca_csr_path }}"
+    ownca_privatekey_path: "{{ cert_from_ca_ssl_intermediate_dir }}/{{ cert_from_ca_intermediate_key_pem }}"
+    ownca_path: "{{ cert_from_ca_ssl_intermediate_dir }}/{{ cert_from_ca_intermediate_cert_pem }}"
+    ownca_privatekey_passphrase : "{{ cert_from_ca_ca_privatekey_passphrase if cert_from_ca_ca_privatekey_passphrase != '' else omit }}"
+    provider: ownca
+
+- name: Create full chain certificate
+  become: yes
+  shell: "cat {{ cert_from_ca_cert_path }} {{ cert_from_ca_ssl_root_dir }}/{{ cert_from_ca_chain_cert_pem_dest }} > {{ cert_from_ca_ssl_certificate_fullchain }}"
+  args:
+    chdir: "{{ cert_from_ca_ssl_root_dir }}"
+
+- name: Cleanup ssl_intermediate_dir directory
+  become: yes
+  file:
+    path: "{{ cert_from_ca_ssl_intermediate_dir }}"
+    state: absent

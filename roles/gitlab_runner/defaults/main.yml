@@ -1,0 +1,2 @@
+---
+gitlab_runner_download_validate_certs: true

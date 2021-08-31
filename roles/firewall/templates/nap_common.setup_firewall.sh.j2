@@ -1,0 +1,164 @@
+#!/bin/bash
+
+#--------------------Firewall for NAC--------------------#
+
+
+#--------------------------------------------------------#
+#------------------------CONTENTS------------------------#
+#--------------------------------------------------------#
+
+# [1000] PREROUTING CHIN
+# [1100] INPUT CHAIN
+# [1101] IN_ICMP CHAIN
+# [1102] IN_UDP CHAIN
+# [1103] IN_TCP CHAIN
+
+# [1200] FORWARD CHAIN
+# [1201] FW_ICMP CHAIN
+# [1202] FW_UDP CHAIN
+# [1203] FW_TCP CHAIN
+# [1204] FW_ALL CHAIN
+# [1205] FW_OPEN CHAIN
+
+# 1300] OUTPUT CHAIN
+# [1301] OUT_ICMP CHAIN
+# [1302] OUT_UDP CHAIN
+# [1303] OUT_TCP CHAIN
+
+# [1400] POSTROUTING CHAIN
+
+# [2000] SSH CHAIN
+
+
+#--------------------------------------------------------#
+#---------------------CONFIGURATION----------------------#
+#--------------------------------------------------------#
+
+##==VARIABLES==##
+
+BASTION_ADDR={{ bastion_internal_ip }}
+INTERNAL_NET={{ internal_ipv4_range }}
+DOCKER_NET={{ docker_ipv4_range }}
+
+##CLEAR FIREWALL RULES##
+iptables -t filter -F
+iptables -t nat -F
+iptables -t mangle -F
+
+##SETUP DEFAULT POLICY##
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
+##CREATE NEW CHAINS##
+iptables -t filter -N IN_ICMP
+iptables -t filter -N IN_UDP
+iptables -t filter -N IN_TCP
+iptables -t filter -N IN_VRRP
+iptables -t filter -N SSH
+
+iptables -t filter -N FW_ICMP
+iptables -t filter -N FW_UDP
+iptables -t filter -N FW_TCP
+iptables -t filter -N FW_ALL
+iptables -t filter -N FW_OPEN
+
+iptables -t filter -N OUT_ICMP
+iptables -t filter -N OUT_UDP
+iptables -t filter -N OUT_TCP
+iptables -t filter -N OUT_VRRP
+
+#[1000]#==PREROUTING CHAIN==##
+
+#[1100]#==INPUT CHAIN==##
+iptables -t filter -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A INPUT -i lo -j ACCEPT
+iptables -t filter -A INPUT -s 127.0.0.0/8 -j DROP
+iptables -t filter -A INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -t filter -A INPUT -p icmp -m conntrack --ctstate NEW -j IN_ICMP
+iptables -t filter -A INPUT -p udp -m conntrack --ctstate NEW -j IN_UDP
+iptables -t filter -A INPUT -p vrrp -m conntrack --ctstate NEW -j IN_VRRP -m comment "VRRP traffic for keepalived"
+iptables -t filter -A INPUT -p ah -m conntrack --ctstate NEW -j IN_VRRP -m comment "AH traffic for keepalived is treated as part of the VRRP chain"
+# The below rule Checks to see if TCP flags FIN, SYN, RST and ACK are set, but will only accept if SYN is the only flag set.
+iptables -t filter -A INPUT -p tcp --tcp-flags FIN,SYN,RST,ACK,SYN -m conntrack --ctstate NEW -j IN_TCP
+iptables -t filter -A INPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]INPUT_denied: " --log-level 4
+iptables -t filter -A INPUT -j REJECT --reject-with icmp-proto-unreachable
+
+#[1101]#==IN_ICMP INPUT CHAIN - Controls ICMP traffic destined for the VM==##
+iptables -t filter -A IN_ICMP -p icmp --icmp-type echo-request -m conntrack --ctstate NEW -j ACCEPT
+
+#[1102]#==IN_UDP INPUT CHAIN== - Controls UDP traffic destined for the VM##
+#-----------------New rules go below here-----------------#
+iptables -t filter -A IN_UDP -p udp -s $INTERNAL_NET -j ACCEPT --comment "UDP traffic from the internal IP range.
+iptables -t filter -A IN_UDP -p udp -s $DOCKER_NET -j ACCEPT --comment "UDP traffic from the Docker IP range.
+#-----------------New rules go above here-----------------#
+
+#[1103]#==IN_TCP INPUT CHAIN - Controls TCP traffic destined for the VM==##
+#-----------------New rules go below here-----------------#
+iptables -t filter -A IN_TCP -p tcp -s $BASTION_ADDR --dport 22 -m recent --set --name INTERNAL_SSH --rsource -j SSH -m comment --comment "SSH traffic from bastion host"
+iptables -t filter -A IN_TCP -p tcp --dport 22 -j REJECT --reject-with icmp-proto-unfeachable
+iptables -t filter -A IN_TCP -p tcp -s $INTERNAL_NET -j ACCEPT -m comment --comment "TCP traffic from the internal IP range"
+iptables -t filter -A IN_TCP -p tcp -s $DOCKER_NET -j ACCEPT -m comment --comment "TCP traffic from the Docker IP range"
+#-----------------New rules go above here-----------------#
+
+#[1104]#==IN_APPR INPUT CHAIN - Controls VRRP and related traffic destiner for the VM==#
+iptables -t filter -A IN_VRRP -p vrrp -s $INTERNAL_NET -j ACCEPT
+iptables -t filter -A IN_VRRP -p ah -s $INTERNAL_NET -j ACCEPT
+
+#[1200]#==FORWARD CHAIN==##
+iptables -t filter -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A FORWARD -p icmp -m conntrack --ctstate NEW -j FW_ICMP
+iptables -t filter -A FORWARD -p udp -m conntrack --ctstate NEW -j FW_UDP
+iptables -t filter -A FORWARD -p tcp -m conntrack --ctstate NEW -j FW_TCP
+iptables -t filter -A FORWARD -m conntrack --ctstate NEW -j FW_ALL
+iptables -t filter -A FORWARD -m limit --limit 3/min -j LOG --log-prefix "[ipt]FORWARD_denied: " --log-level 4
+iptables -t filter -A FORWARD -j REJECT --reject-with icmp-proto-unreachable
+
+#[1201]#==FW_ICMP FROWARD CHAIN - Control ICMP message across the subnets==##
+
+#[1202]#==FW_UDP FROWARD CHAIN - UDP forwarding chain for traffic routing through==##
+
+#[1203]#==FW_TCP FROWARD CHAIN - TCP forwarding chain for traffic routing through==##
+
+#[1204]#==FW_ALL FROWARD CHAIN - Forward chain for non protocol specific traffic routing through==##
+
+#[1205]#==FW_OPEN FROWARD CHAIN - Combines with PREROUTING to expose internal services to untrusted networks==##
+
+#[1300]#==OUTPUT CHAIN==##
+iptables -t filter -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -t filter -A OUTPUT -i lo -j ACCEPT
+iptables -t filter -A OUTPUT -p icmp -m conntrack --ctstate NEW -j OUT_ICMP
+iptables -t filter -A OUTPUT -p udp -m conntrack --ctstate NEW -j OUT_UDP
+iptables -t filter -A OUTPUT -p vrrp -m conntrack --ctstate NEW -j OUT_VRRP
+iptables -t filter -A OUTPUT -p ah -m conntrack --ctstate NEW -j OUT_VRRP
+iptables -t filter -A OUTPUT -p tcp -m conntrack --ctstate NEW -j OUT_TCP
+iptables -t filter -A OUTPUT -m limit --limit 3/min -j LOG --log-prefix "[ipt]OUTPUT_denied: " --log-level 4
+
+#[1301]#==OUT_ICMP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_ICMP -p icmp --icmp-type echo-request -j ACCEPT
+
+#[1302]#==OUT_UDP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_UDP -p udp -d $INTERNAL_NET -j ACCEPT
+#-----------------New rules go below here-----------------#
+
+#[1303]#==OUT_TCP OUTPUT CHAIN - Controls the traffic coming out of the VM==##
+iptables -t filter -A OUT_TCP -p tcp -j ACCEPT
+
+#[1304]#==OUT_VRRP OUTPUT CHAIN - Controls the traffic coming out of the VM=##
+iptables -t filter -A OUT_VRRP -p vrrp -j ACCEPT
+iptables -t filter -A OUT_VRRP -p ah -j ACCEPT
+
+#[1400]#==POSTROUTING==#
+
+#--------------------------------------------------------#
+#-------------NON ATTRIBUTABLE CHAINS BELOW--------------#
+#--------------------------------------------------------#
+
+#[2000]#==POSTROUTING==#
+iptables -t filter -A SSH -p tcp -m recent --rcheck --rsource --name INTERNAL_SSH -j LOG --log-prefix "[ipt]Internal_SSH_Login_src: " --log-level 4
+iptables -t filter -A SSH -p tcp -m recent --rcheck --name INTERNAL_SSH -j ACCEPT
+
+#--------------------------------------------------------#
+#--------------------------------------------------------#
+
+exit 0

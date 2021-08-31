@@ -1,0 +1,52 @@
+- name: install pip
+  become: true
+  yum:
+    name: python-pip
+    state: present
+    executable: pip3
+  tags:
+    online_install
+
+- name: Install psycopg2
+  become: true
+  pip:
+    name: psycopg2-binary
+    state: present
+    executable: pip3
+  tags:
+    online_install
+
+- name: Wait for the Postgres DB to become available via the VIP
+  command: "nc -vz {{ postgres_cluster_floating_ip }} 5432 | grep succeeded"
+  register: result
+  until: result.rc == 0
+  delay: 1
+  check_mode: no
+
+- name: Create a superuser for harbor external postgres sql database
+  become: true
+  postgresql_user:
+    login_host: "{{ postgres_cluster_floating_ip }}"
+    login_password: "{{  postgres_superuser_password }}"
+    ssl_mode: disable
+    port: "{{ postgres_port }}"
+    name: "{{ harbor_postgres_username }}"
+    password: "{{ harbor_postgres_password }}"
+    role_attr_flags: CREATEDB,SUPERUSER
+  run_once: true
+
+- name: Create harbor, notary server, notary signer and clair DBs
+  become: true
+  postgresql_db:
+    login_host: "{{ postgres_cluster_floating_ip }}"
+    login_password: "{{ postgres_superuser_password }}"
+    ssl_mode: disable
+    port: "{{ postgres_port }}"
+    name:  "{{ item }}"
+    owner: "{{ harbor_postgres_username }}"
+  with_items:
+    - "{{ harbor_db_name}}"
+    - "{{ clair_db_name }}"
+    - "{{ notarysigner_db_name }}"
+    - "{{ notaryserver_db_name }}"
+  run_once: true

@@ -1,0 +1,6 @@
+---
+## The user account Ansible will be used to connect to and configre nodes.
+## This user should be present on all nodes and should allow ssh-key based
+## access from the bastion node.
+#remote_user: ubuntu
+#ansible_ssh_common_args: "-o ProxyCommand=\"ssh -W %h:%p {{ remote_user }}@{{ hostvars[groups['type_bastion'][0]['guest.ipAddress'] }}\""

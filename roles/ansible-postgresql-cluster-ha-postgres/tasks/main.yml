@@ -1,0 +1,57 @@
+---
+# PostgreSQL prepare for install (for Debian based only)
+- block:
+    - name: Ensure postgresql database-cluster manager package
+      package:
+        name: postgresql-common
+        state: present
+      tags: ['online_install']
+
+    - name: Disable initializing of a default postgresql cluster
+      replace:
+        path: /etc/postgresql-common/createcluster.conf
+        replace: create_main_cluster = false
+        regexp: ^#?create_main_cluster.*$
+
+    - name: Disable log rotation with logrotate for postgresql
+      file:
+        dest: /etc/logrotate.d/postgresql-common
+        state: absent
+  when: ansible_os_family == "Debian"
+
+# Install PostgreSQL Repository
+- block:
+    - name: Get pgdg-redhat-repo-latest.noarch.rpm
+      get_url:
+        url: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"  # noqa 204
+        dest: /tmp/
+        timeout: 30
+        validate_certs: false
+
+    - rpm_key:
+        state: present
+        key: "https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG-{{ postgresql_version }}"
+
+    - name: Install PostgreSQL repository
+      package:
+        name: /tmp/pgdg-redhat-repo-latest.noarch.rpm
+        state: present
+  when: ansible_os_family == "RedHat"
+  tags: ['online_install']
+
+# Install PostgreSQL from repository
+- name: Install PostgreSQL packages (on RedHat)
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ postgresql_packages }}"
+  when: ansible_os_family == "RedHat"
+
+# Debian
+- name: Install PostgreSQL packages (on Debian)
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ postgresql_packages }}"
+  when: ansible_os_family == "Debian"
+  tags: ['online_install']

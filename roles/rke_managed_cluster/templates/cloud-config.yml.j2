@@ -1,0 +1,61 @@
+#cloud-config
+ntp:
+  enabled: true
+  ntp_client: chrony
+# Customize RancherOS NTP daemon configuration
+write_files:
+  - container: ntp
+    path: /etc/chrony.conf
+    permissions: "0644"
+    owner: root
+    content: |
+      # {{ ansible_managed }}
+      {% for server in rke_ntp_servers %}
+      server {{ server }}
+      {% endfor %}
+      driftfile /var/lib/chrony/drift
+      makestep 1.0 3
+      rtcsync
+      logdir /var/log/chrony
+
+# NB: If using DHCP, VM templates MUST remove the machine ID from /etc/machine-id before it can be used.
+#
+# Otherwise, all machines cloned from the same template will generate identical DHCP client IDs and will
+# be assigned the same DHCP IP.
+
+{% if rancher_managed_cluster_vsphere_network_provider == 'vcenter_network' %}
+  - path: /root/network_setup.sh
+    content: |
+        #!/bin/bash
+        vmtoolsd --cmd 'info-get guestinfo.ovfEnv' > /tmp/ovfenv
+        IPAddress=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.address" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        SubnetMask=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.netmask" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+
+        vmtoolsd --cmd 'info-get guestinfo.ovfEnv' > /tmp/ovfenv IPAddress=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.address" oe:value="\([^"]*\).*/\1/p' /tmp/ovtenv) SubnetMask=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.ip.0.netmask" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        Gateway=$(sed -n 's/.*Property oe:key="guestinfo.interface.0.route.0.gateway" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+        DNS=$(sed -n 's/.*Property oe:key="guestinfo.dns.servers" oe:value="\([^"]*\).*/\1/p' /tmp/ovfenv)
+
+        sudo nmcli con mod "System ens160" ipv4.addresses "$IPAddress/24" ipv4.gateway "$Gateway" ipv4.dns "$DNS" ipv4.dns-search "{{ rke_vcenter_dns_domain }}" ipv4.method "manual"
+        sudo nmcli connection reload
+{% endif %}
+{% if rke_ca_certificates_trusted | length > 0 %}
+{% for cert in rke_ca_certificates_trusted %}
+  - path: '/usr/local/share/ca-certificates/{{ cert.name }}.crt'
+    content: |
+      {{ cert.pem | indent(6, False) }}
+  - path: '/etc/docker/certs.d/{{ harbor_hostname }}/{{ cert.name }}.crt'
+    permission; '0640'
+    content: |
+      {{ cert.pem | indent(6, False) }}
+{% endfor %}
+{% endif %}
+runcmd:
+{% if rke_ca_certificates_trusted | length > 0 %}
+  # Extract CA root certs.
+  - /usr/sbin/update-ca-certificates
+{% endif %}
+{% if rancher_managed_cluster_vsphere_network_provider == 'vcenter_network' %}
+  - 'sudo bash /root/network_setup.sh'
+{% endif %}
+  # Restart chrony so it uses the updated config file.
+  - 'sudo systemctl restart chronyd'

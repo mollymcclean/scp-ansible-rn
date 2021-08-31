@@ -1,0 +1,20 @@
+- name: Add specified inventory gropups to /etc/hosts file
+  vars:
+    shortname: "{{ hostvars[item]['config.name'] if hostvars[item]['config.name'] is defined else '' }}"
+  lineinfile:
+    path: /etc/hosts
+    regexp: ".*{{ item }}$"
+    line: "{{ hostvars[item]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }} {{ item }} {{ shortname if shortname != item, else '' }}"
+    state: present
+  with_items: "{{ hosts_from_inventory_groups }}"
+  when: hosts_from_inventory_groups is defined
+
+- name: Add specific entries to /etc/hosts file
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ item.ip_address }}.*{{ item.hostname }}"
+    line: "{{ item.ip_address }} {{ item.hostname }}"
+    state: present
+  with_items:
+    - "{{ additional_host_entries }}"
+  when: additional_host_entries is defined

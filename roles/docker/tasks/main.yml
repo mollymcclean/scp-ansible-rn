@@ -1,0 +1,132 @@
+---
+- name: install the repository into DNF for docker
+  command: "dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo"
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version | int == 8
+
+- name: install the repository into yum for docker
+  become: true
+  command: "yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo"
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version | int == 7
+
+- name: install the required base packages into apt for docker
+  become: true
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: Add apt signing key for docker
+  become: true
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when:
+    - ansible_os_family == 'Debian'
+
+# TODO: Make bionic a variable - probably wait until focal support exists
+- name: install the repository into apt for docker
+  become: true
+  apt_repository:
+    repo: "deb https://download.docker.com/linux/ubuntu bionic stable"
+    state: present
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: install the latest version of docker
+  become: true
+  package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: latest
+
+- name: deps for python
+  become: true
+  package:
+    name:
+      - epel-release
+    state: latest
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: install docker compose dependencies
+  become: true
+  package:
+    name:
+      - openssl
+      - python-devel
+      - python-pip
+    state: latest
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: remove stuff
+  become: true
+  package:
+    name:
+      - python-requests
+    state: absent
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: Install docker-compose and docker python bindings
+  become: true
+  pip:
+    name: pip
+    state: latest
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: Install docker-compose and docker python bindings
+  become: true
+  pip:
+    name:
+      - docker
+      - docker-compose
+  when:
+    - ansible_os_family == 'RedHat'
+
+- name: install docker compose
+  become: true
+  apt:
+    name: docker-compose
+    state: latest
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: Template docker daemon file
+  become: true
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+  when: docker_insecure_registries | length>0
+  notify:
+    - restart docker
+
+- name: Ensure ipv4 forwarding is enabled
+  become: true
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Make sure docker is running & enabled
+  become: true
+  systemd:
+    state: started
+    enabled: yes
+    name: docker

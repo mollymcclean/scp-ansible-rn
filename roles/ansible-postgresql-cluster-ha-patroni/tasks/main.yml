@@ -1,0 +1,80 @@
+---
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+# Install packages from repository
+- name: Install system packages
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ system_packages }}"
+  tags:
+    - online_install
+
+- name: Install Patroni
+  become: yes
+  become_user: "postgres"
+  pip:
+    name: patroni[consul]
+    extra_args: --user
+    executable: pip3.6
+  tags:
+    - online_install
+
+- name: Create symbolic link to patroni executable
+  file:
+    state: link
+    src: /var/lib/postgresql/.local/bin/patroni
+    dest: /usr/local/bin/patroni
+
+- name: Create directory for DATA postgresql
+  file:
+    path: "{{ path_data_psql }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: 0700
+
+- name: Create directory for LOGGING postgresql
+  file:
+    path: "{{ path_log_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: 0700
+
+- name: Touch a file for LOGGING
+  file:
+    path: "{{ path_log_dir }}/{{ name_log_file }}"
+    state: touch
+    owner: postgres
+    group: postgres
+    mode: 0600
+
+- name: Create dir for patroni YAML file
+  file:
+    path: "{{ patroni_yml_path }}"
+    state: directory
+    recurse: yes
+    owner: postgres
+    group: postgres
+    mode: 0700
+
+- name: Create template YAML file for create name_cluster
+  template:
+     src: postgres.yml.j2
+     dest: "{{ patroni_yml_path }}/postgres.yml"
+     owner: postgres
+     group: postgres
+
+- name: Copy service patroni
+  template:
+     src: patroni.service.j2
+     dest: "/etc/systemd/system/patroni.service"
+
+- name: Startin service patroni with create HA cluster PostgreSQL
+  become_method: sudo
+  service:
+    name: patroni
+    state: started
+    enabled: yes

@@ -1,0 +1,37 @@
+---
+- name: Get cluster id from Rancher
+  rancher_cluster_info:
+    rancher_domain: "{{ gitlab_rancher_info_rancher_domain }}"
+    api_bearer_token: "{{ gitlab_rancher_info_bearer_token }}"
+    name: "{{ gitlab_rancher_info_cluster_name }}"
+    validate_certs: False
+  register: rancher_cluster_info
+
+- name: Upload cluster id variable from Rancher to gitlab
+  gitlab_instance_variable:
+    gitlab_url: "{{ gitlab_rancher_info_gitlab_url }}"
+    private_token: "{{ gitlab_rancher_info_gitlab_api_token }}"
+    variable_name: "{{ gitlab_rancher_info_variable_name }}"
+    variable_value: "{{ rancher_cluster_info.cluster_id }}"
+
+- name: Retrieve Kubeconfig file from rancher
+  uri:
+    url: "{{ gitlab_rancher_info_rancher_domain }}/v3/clusters/{{ rancher_cluster_info.cluster_id }}?action=generateKubeconfig"
+    method: POST
+    return_content: yes
+    validate_certs: False
+    headers:
+      Authorization: "Bearer {{ gitlab_rancher_info_bearer_token }}"
+      Content-Type: "application/json"
+  register: config
+
+# Currently a group variable because of the limits gitlab has on instance variables (once https://gitlab.com/gitlab-org/gitlab/-/merge_requests/35063
+# is merged then this can be moved to an instance variable)
+- name: Upload cluster id variable from Rancher to gitlab
+  gitlab_group_variable:
+    gitlab_url: "{{ gitlab_rancher_info_gitlab_url }}"
+    private_token: "{{ gitlab_rancher_info_gitlab_api_token }}"
+    group_name: "{{ gitlab_rancher_info_gitlab_group_name }}"
+    variable_name: "{{ gitlab_rancher_info_kubeconfig_variable_name }}"
+    variable_value: "{{ config.json.config }}"
+    variable_type: file

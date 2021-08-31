@@ -1,0 +1,4 @@
+---
+extra_disk_target_dir: /data
+extra_disk_location: /dev/sdb
+extra_disk_fstype: ext4

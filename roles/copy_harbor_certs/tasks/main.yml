@@ -1,0 +1,8 @@
+- name: Copy certs from build machine to harbor
+  become: true
+  copy:
+    src: "{{ cert_from_ca_dc_root_key_path }}"
+    dest: "/home/{{ harbor_user }}"
+    owner: "{{ harbor_user }}"
+    group: "{{ harbor_user }}"
+    mode: 0640

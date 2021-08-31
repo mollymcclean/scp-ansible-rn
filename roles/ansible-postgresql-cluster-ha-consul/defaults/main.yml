@@ -1,0 +1,15 @@
+---
+consul_name_service: consul
+consul_version: "1.9.1"
+consul_release: "consul_{{ consul_version }}_linux_amd64"
+consul_archive_file: "{{ consul_release }}.zip"
+consul_area: "/home/{{ remote_user }}"
+consul_download_url: "https://releases.hashicorp.com/{{ consul_name_service }}/{{ consul_version }}/{{ consul_archive_file }}"
+
+consul_group: consul_node
+
+consul_data_dir: "/var/consul"
+consul_common_dir: "/etc/consul.d"
+consul_require_dirs:
+    - "{{ consul_common_dir }}/scripts"
+    - "{{ consul_data_dir }}"

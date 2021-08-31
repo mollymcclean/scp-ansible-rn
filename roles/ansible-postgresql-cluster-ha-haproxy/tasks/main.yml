@@ -1,0 +1,24 @@
+---
+- name: Installing HAproxy package (on RedHat)
+  yum:
+    name: haproxy
+  when: ansible_os_family == "RedHat"
+
+- name: Install HAProxy package (on Debian)
+  apt:
+    name: haproxy
+  when: ansible_os_family == "Debian"
+
+- sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+
+- name: Starting haproxy service
+  systemd:
+     name: haproxy
+     state: started
+     enabled: yes

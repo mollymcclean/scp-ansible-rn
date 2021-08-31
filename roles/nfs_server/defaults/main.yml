@@ -1,0 +1,6 @@
+---
+exports:    # Full list of directories to export
+  - path: /var/share  # Complete path to the first directory to share
+    parameters: rw,secure,sync # NFS sharing options
+    networks:
+      - 192.168.0.0/255.255.255.0 # Network allowed to access to this directory

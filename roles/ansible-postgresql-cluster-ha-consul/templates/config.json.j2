@@ -1,0 +1,24 @@
+{
+    "bootstrap_expect": 3,
+    "client_addr": "0.0.0.0",
+    "bind_addr": "{{ ansible_default_ipv4.address if rke_provider == 'workstation' else hostvars[inventory_hostname]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}",
+    "data_dir": "{{ consul_data_dir }}",
+    "enable_script_checks": true,
+    "dns_config": {
+        "enable_truncate": true,
+        "only_passing": true
+    },
+    "enable_syslog": true,
+    "encrypt": "{{ hostvars['CONSUL_DUMMY_HOLDER']['consul_uniq_key'] }}",
+    "leave_on_terminate": true,
+    "log_level": "INFO",
+    "rejoin_after_leave": true,
+    "server": true,
+    "start_join": [
+        {% for i in groups[consul_group] %}
+        "{{ hostvars[i]['ansible_default_ipv4']['address'] if rke_provider == 'workstation' else hostvars[i]['guest.ipAddress' if rke_provider == 'vsphere' else 'private_ip_address'] }}"
+        {% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    "ui": true
+}

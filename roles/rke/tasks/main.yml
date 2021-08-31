@@ -1,0 +1,41 @@
+---
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Ensure AllowTcpForwarding is set to yes on the RKE nodes
+  become: true
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^AllowTcpForwarding'
+    line: 'AllowTcpForwarding yes'
+    state: present
+
+- name: Ensure PermitTunnel is set to yes on the RKE nodes
+  become: true
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^PermitTunnel'
+    line: 'PermitTunnel yes'
+    state: present
+
+# TODO: Move this to a standalone file to avoid issues when updating sysctl
+- name: Enable sysctl config setting
+  become: true
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  notify:
+    - reboot vm
+
+- name: Flush handlers to ensure harbor is started before configuring
+  meta: flush_handlers
+
+- name: Add the required modules for RKE
+  become: true
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ rke_system_modules }}"

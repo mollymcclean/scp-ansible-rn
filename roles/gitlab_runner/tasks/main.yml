@@ -1,0 +1,28 @@
+---
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Check if GitLab Runner is already installed.
+  stat: path=/usr/bin/gitlab-runner
+  register: gitlab_file
+
+- name: Download GitLab repository installation script.
+  become: yes
+  get_url:
+    url: "{{ gitlab_runner_repository_installation_script_url }}"
+    dest: /tmp/gitlab_runner_install_repository.sh
+    validate_certs: "{{ gitlab_runner_download_validate_certs }}"
+  when: not gitlab_file.stat.exists
+
+- name: Install GitLab Runner repository.
+  become: yes
+  command: bash /tmp/gitlab_runner_install_repository.sh
+  register: output
+  when: not gitlab_file.stat.exists
+
+- name: Install GitLab Runner
+  become: yes
+  package:
+    name: "{{ gitlab_runner_package_name | default('gitlab-runner') }}"
+    state: present
+  when: not gitlab_file.stat.exists

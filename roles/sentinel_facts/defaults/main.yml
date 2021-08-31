@@ -1,0 +1,6 @@
+---
+sentinel_facts_base_path: /etc/ansible/facts.d
+
+sentinel_facts_redis_sentinel_port: 26379
+sentinel_facts_redis_sentinel_password: Password123
+sentinel_facts_cluster_name: testCluster

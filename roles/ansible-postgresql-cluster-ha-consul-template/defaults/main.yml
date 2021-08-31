@@ -1,0 +1,16 @@
+---
+consul_tpl_name_service: consul-template
+consul_tpl_version: "0.25.0"
+consul_tpl_release: "consul-template_{{ consul_tpl_version }}_linux_amd64"
+consul_tpl_archive_file: "{{ consul_tpl_release }}.zip"
+consul_tpl_area: "/tmp"
+consul_tpl_download_url: "https://releases.hashicorp.com/{{ consul_tpl_name_service }}/{{ consul_tpl_version }}/{{ consul_tpl_archive_file }}"
+
+consul_tpl_consul_url: 127.0.0.1
+
+consul_tpl_home: "/opt/{{ consul_tpl_name_service }}"
+consul_log_file: "/var/log/{{ consul_tpl_name_service }}"
+consul_tpl_dirs:
+  - "{{ consul_tpl_home }}/templates"
+  - "{{ consul_tpl_home }}/config"
+  - "{{ consul_log_file }}"

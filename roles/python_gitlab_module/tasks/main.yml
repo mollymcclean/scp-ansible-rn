@@ -1,0 +1,7 @@
+---
+- name: Install python gitlab (fixed version) for gitlab ansible modules
+  become: true
+  pip:
+    name: python-gitlab<=1.12.1
+  tags:
+    - online_install

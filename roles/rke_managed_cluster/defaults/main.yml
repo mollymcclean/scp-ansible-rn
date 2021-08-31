@@ -1,0 +1,163 @@
+# Rancher Create RKE template parameters
+rke_managed_cluster_rancher_domain: rancher.lab.int
+rke_provider: vsphere
+rke_username: admin
+
+# Rancher Create RKE template version parameters
+rke_cluster_config_default_cluster_role_for_project_members: null
+rke_cluster_config_enable_cluster_alerting: false
+rke_cluster_config_enable_cluster_monitoring: false
+rke_cluster_config_enable_network_policy: true
+rke_cluster_config_rancher_kubernetes_engine_config_authentication_strategy: x509
+rke_cluster_config_rancher_kubernetes_engine_config_cloud_provider_name: vsphere
+rke_cluster_config_rancher_kubernetes_engine_config_ingress_provider: 'none'
+
+# Options for the ingress configmap
+rke_cluster_config_rancher_kubernetes_engine_config_ingress_options: {}
+
+# Extra arguments
+rke_cluster_config_rancher_kubernetes_engine_config_ingress_extra_args: {}
+rke_cluster_config_rancher_kubernetes_engine_config_custom_addons: ''
+rke_cluster_config_rancher_kubernetes_engine_config_ignore_docker_version: true
+rke_cluster_config_rancher_kubernetes_engine_config_kubernetes_version: 1.17.x
+rke_cluster_config_rancher_kubernetes_engine_config_monitoring_provider: metrics-server
+rke_cluster_config_rancher_kubernetes_engine_config_network_options_flannel_backend_type: vxlan
+rke_cluster_config_rancher_kubernetes_engine_config_network_plugin: canal
+
+# Example:
+# rke_cluster_config_rancher_kubernetes_engine_config_private_registries:
+#   - url: foo.bar
+#     isDefault: true
+#     user: redistry_user
+rke_cluster_config_rancher_kubernetes_engine_config_private_registries: []
+    
+# etcd UID and GID are hardcoded in the base images we build for Rancher
+# take care before changing these
+rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_gid: 52034
+rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_uid: 52034
+rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_backup_config_enabled: true
+rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_creation: 12h
+rke_cluster_config_rancher_kubernetes_engine_config_services_etcd_retention: 72h
+rke_cluster_config_rancher_kubernetes_engine_config_services_kube_api_always_pull_images: true
+rke_cluster_config_rancher_kubernetes_engine_config_services_kube_api_service_node_port_range: 30000-32767
+rke_cluster_template_id: "cattle-global-data:ct-hd9t5"
+rke_enabled: True
+rke_template_name: "Base RKE Template"
+rke_template_version: "v1"
+
+rke_vcenter_domain: vcenter.example.com
+rke_vcenter_tls_insecure: False
+rke_vcenter_default_datastore: WorkloadDatastore
+rke_vcenter_folder: vm/storage-provisioning
+rke_vcenter_username: foobar
+rke_vcenter_password: myExamplePas$word!
+
+# Rancher Node Template common parameters
+rke_engine_install_url: https://releases.rancher.com/install-docker/19.03.sh
+rke_control_plane_node_template_name: "CIS Hardened Centos 7 AMI - Control Plane - Ansible Managed"
+rke_etcd_node_template_name: "CIS Hardened Centos 7 AMI - ETCD - Ansible Managed"
+rke_worker_node_template_name: "CIS Hardened Centos 7 AMI - Worker - Ansible Managed"
+rke_ssh_user: ubuntu
+rke_use_internal_ip_address: True
+
+# Rancher EC2 Node Template parameters
+rke_ami_id: ami-123456abcde
+rke_block_duration_minutes: 0
+rke_cluster_tag: ops
+rke_device_name: "/dev/sda1"
+rke_insecure_registries: []
+rke_ec2_size: t2.large
+rke_encrypt_ebs_volumes: False
+rke_endpoint: ""
+rke_insecure_transport: False
+rke_iam_instance_profile: RKECloudProvisioner
+rke_keypair_name: ""
+rke_monitoring: True
+rke_private_address_only: False
+rke_region_zone: a
+rke_request_spot_instance: False
+rke_retries: 5
+rke_root_size: 80
+rke_region: eu-west-2
+rke_schedule_tag: uk-office-hours
+rke_security_group: rke-sg
+rke_security_group_readonly: False
+rke_session_token: ""
+rke_spot_price: "0.50"
+rke_subnet_id: subnet-XXXXXXXXXXXXXXXXX
+rke_use_ebs_optimized_instances: False
+rke_use_private_address: False
+rke_validate_certs: False
+rke_volume_type: gp2
+rke_vpc_id: vpc-XXXXXXXXXXXXXXXXX
+
+# Rancher vSphere Node Template parameters
+rke_cloud_init: ""
+# NTP server area configuration (leave empty for 'Worldwide').
+# See: http://support.ntp.org/bin/view/Servers/NTPPoolServers
+#rke_ntp_area: ''
+#rke_ntp_servers:
+#  - "0{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+#  - "1{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+#  - "2{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+#  - "3{{ '.' + ntp_area if ntp_area else '' }}.pool.ntp.org iburst"
+rke_control_plane_cpu_count: 2
+rke_etcd_cpu_count: 2
+rke_worker_cpu_count: 2
+rke_creation_type: template
+rke_datacenter: /MyDatacenter
+rke_folder: "{{ rke_datacenter }}/vm"
+rke_control_plane_clone_from: "{{ rke_folder }}/Templates/bastion-plus-cloud-init"
+rke_etcd_clone_from: "{{ rke_folder }}/Templates/bastion-plus-cloud-init"
+rke_worker_clone_from: "{{ rke_folder }}/Templates/bastion-plus-cloud-init"
+rke_datastore: "{{ rke_datacenter }}/datastore/{{ rke_vcenter_default_datastore }}"
+rke_disk_size: 81920
+rke_control_plane_memory_size: 8192
+rke_etcd_memory_size: 8192
+rke_worker_memory_size: 8192
+rke_network: "{{ rke_datacenter }}/network/Subnet_Internet_access"
+rke_pool: "{{ rke_datacenter }}/host/Cluster-1/Resources/Compute-ResourcePool"
+rke_ssh_password: tcuser
+rke_ssh_port: 22
+rke_ssh_user_group: staff
+rke_control_plane_tags_vsphere: []
+rke_etcd_tags_vsphere: []
+rke_worker_tags_vsphere: []
+rke_vapp_ip_allocation_policy: ''
+rke_vapp_ip_protocol: ''
+rke_vapp_transport: ''
+rke_vapp_property: []
+rke_vcenter_port: 443
+rke_vsphere_config_param:
+  - disk.enableUUID=TRUE
+
+# Valid options are 'dhcp' (default) or 'vcenter_network' (should be used in HODC envs). The DNS domain is used when
+# option is set to vcenter_network
+rancher_managed_cluster_vsphere_network_provider: dhcp
+rke_vcenter_dns_domain: example.com
+
+# Rancher Cluster parameters
+rke_cluster_name: "ops-cluster"
+
+# Rancher Manager Nodepool Parameters
+rke_control_plane: true
+rke_control_plane_quantity: 2
+rke_control_plane_nodepool_prefix: "cp-"
+rke_etcd: true
+rke_etcd_quantity: 3
+rke_etcd_nodepool_prefix: "etcd-"
+rke_worker: true
+rke_worker_quantity: 1
+rke_worker_nodepool_prefix: "wp-"
+rke_delete_not_ready_after_secs: 0
+rke_type: nodePool
+
+# Monitoring options
+rke_enable_monitoring: true
+
+rke_validate_rancher_ssl_cert: false
+
+# This variable is a list of objects. Each object must have a property 'name' which will be the name of the file created
+# on the downstream clusters, and 'pem' which will be the contents of that file.
+rke_ca_certificates_trusted: []
+

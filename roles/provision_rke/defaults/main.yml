@@ -1,0 +1,19 @@
+---
+rancher_version: 2.5.5
+
+rke_version: v1.2.4
+rke_kubernetes_version: v1.19.6-rancher1-1
+rke_provider: vsphere
+rke_user_username: system_rancher
+
+rke_kubectl_user: "{{ ansible_ssh_user }}"
+
+# If you set rke_use_custom_certs to true then the follow values beneath it need to be valid
+rke_use_custom_certs: false
+rke_custom_certificates_base_path: /var/tmp
+rke_custom_certificates_ca_crt_file: ca.pem
+rke_custom_certificates_ca_key_file: ca-key.pem
+rke_custom_certificates_privatekey_passphrase: ''
+
+# Note https://github.com/rancher/rke/blob/master/pki/constants.go#L19-L29 dictates the CN should always be kube-service-account-token
+rke_custom_service_account_key_subject: '/C=GB/ST=England/L=Berkshire/O=Automation_Logic/OU=Rancher/CN=kube-service-account-token'

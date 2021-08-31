@@ -1,0 +1,28 @@
+# Base dir for operations
+cert_from_ca_ssl_root_dir: /etc/ssl/
+cert_from_ca_ssl_intermediate_dir: "{{ cert_from_ca_ssl_root_dir }}/intermediate"
+
+ca_certificates_source: files/rancher_certs
+ca_certificates_bastion_dir: /var/tmp/rancher_certs
+
+# Files and values for importing the CA
+cert_from_ca_intermediate_key_pem: intermediate.key.pem
+cert_from_ca_intermediate_cert_pem: intermediate.cert.pem
+cert_from_ca_chain_cert_pem: ca-chain-cert.pem
+
+cert_from_ca_dc_env: False
+cert_from_ca_dc_root_key_path: /var/tmp
+
+# Generated cert properties
+cert_from_ca_cert_name: mycert
+cert_from_ca_ssl_common_name: example.com
+cert_from_ca_rsa_private_key_path: "{{ cert_from_ca_ssl_root_dir }}/{{ cert_from_ca_cert_name }}_private.key"
+cert_from_ca_cert_path: "{{ cert_from_ca_ssl_root_dir }}/{{ cert_from_ca_cert_name }}.crt"
+cert_from_ca_csr_path: "{{ cert_from_ca_ssl_root_dir }}/{{ cert_from_ca_cert_name }}.csr"
+cert_from_ca_country_name: GB
+cert_from_ca_ssl_state_name: Berkshire
+cert_from_ca_locality_name: Newbury
+cert_from_ca_organization_name: CISC-UK
+cert_from_ca_organizational_unit_name: My Project
+cert_from_ca_ssl_certificate_fullchain: "{{ cert_from_ca_ssl_root_dir }}/{{ cert_from_ca_cert_name }}.fullchain.crt"
+cert_from_ca_ca_privatekey_passphrase: automationlogic

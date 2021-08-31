@@ -1,0 +1,12 @@
+rancher_ui_domain: rancher.lab.int
+rancher_ui_access_mode: restricted
+rancher_ui_active_directory_allowed_login_principals: []
+rancher_ui_api_token: token-2kzcj:jv7zqgc2jm5zl66kprhk8pmj88xxmkcb566sh22x5t9ddcx4mwxtzf
+rancher_ui_active_directory_domains: []
+rancher_ui_active_directory_default_domain: example
+rancher_ui_active_directory_service_account_username: rancher_sa
+rancher_ui_active_directory_service_account_password: "Password123456!"
+rancher_ui_active_directory_group_search_base: CN=rancher-auth-users,OU=Groups,OU=example,DC=example,DC=com
+rancher_ui_active_directory_user_search_base: OU=Users,OU=example,DC=example,DC=com
+rancher_ui_enable_local_cluster_monitoring: true
+rancher_ui_validate_ssl_certs: false

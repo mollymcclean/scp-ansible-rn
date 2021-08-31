@@ -1,0 +1,34 @@
+---
+- name: Extra Disk | Create a directory if it does not exist
+  become: true
+  file:
+    path: "{{ extra_disk_target_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Extra Disk | Create partition on the disk
+  become: true
+  parted:
+    device: "{{ extra_disk_location }}"
+    number: 1
+    state: present
+    part_type: primary
+  register: partition
+
+- name: Extra Disk | Create a filesystem on the partition on the disk
+  become: true
+  filesystem:
+    fstype: "{{ extra_disk_fstype }}"
+    dev: "{{ partition.disk.dev }}1"
+  when: partition.changed
+
+# This also adds the disk into fstab
+- name: Extra Disk | Mount the disk
+  become: true
+  mount:
+    path: "{{ extra_disk_target_dir }}"
+    src: "{{ extra_disk_location }}1"
+    fstype: "{{ extra_disk_fstype }}"
+    state: mounted

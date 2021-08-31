@@ -1,0 +1,58 @@
+## TODO: PGP Verification of file downloaded
+- name: Extract harbor into our user dir
+  become: yes
+  unarchive:
+    src: "{{ harbor_binary_location }}"
+    dest: "/home/{{ harbor_user }}"
+    remote_src: yes
+  tags:
+    - online_install
+
+# First of all check if the harbor config file exists - this determines if we are a first time install or a rebuild
+- name: Check for existing harbor install
+  become: true
+  stat:
+    path: "/home/{{ harbor_user }}/harbor/harbor.yml"
+  register: first_time_install
+
+# Owner and group tags on the unarchive task don't seem to work (ansible bug?). Once fixed this can be removed
+- name: Recursively own the directory
+  become: true
+  file:
+    path: "/home/{{ harbor_user }}/harbor"
+    state: directory
+    recurse: yes
+    owner: "{{ harbor_user }}"
+    group: "{{ harbor_user }}"
+  when: not first_time_install.stat.exists
+
+- name: Template installation configuration file
+  template:
+    src: harbor.yml.j2
+    dest: "/home/{{ harbor_user }}/harbor/harbor.yml"
+  register: template_configuration
+
+- name: Set pip3 as pip
+  become: yes
+  command: "update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1"
+
+- name: Install harbor
+  become: yes
+  command:
+    cmd: "/home/{{ harbor_user }}/harbor/install.sh --with-chartmuseum"
+  when: not first_time_install.stat.exists
+
+- name: Update harbor
+  become: yes
+  command:
+    cmd: "/home/{{ harbor_user }}/harbor/prepare"
+  when: first_time_install.stat.exists and template_configuration.changed
+  notify:
+    - reload harbor
+
+- name: Stop harbor on first install so we can load it with systemd
+  become: yes
+  docker_compose:
+    project_src: "/home/{{ harbor_user }}/harbor"
+    stopped: yes
+  when: not first_time_install.stat.exists
