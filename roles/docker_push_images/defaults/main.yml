@@ -1,0 +1,12 @@
+registry_hostname: "{{ inventory_hostname }}"
+#docker_project_user_password: Password123456!
+#docker_project_user_real_name: "System Rancher"
+#docker_project_user_email_address: "user@comeplace.com"
+#docker_admin_pw: Password123456
+registry_repo_path: ""
+rancher_image_source_file_path: "/var/tmp/rancher-images"
+rancher_image_source_file_common_name: rancher-images
+rancher_image_file_name:
+  - rancher-images.tar.gz
+rancher_image_list_name:
+  - rancher-images.txt

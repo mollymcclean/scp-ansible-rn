@@ -1,0 +1,21 @@
+---
+#- include: configure-harbor-via-api.yml
+
+#- name: Login to the Harbor repository
+#  become: yes
+#  remote_user: "{{ harbor_rancher_username }}"
+#  community.docker.docker_login:
+#    registry_url: "{{ harbor_hostname }}"
+#    username: admin
+#    password: "{{ harbor_admin_pw }}"
+#  tags: load_images
+
+- name: Run image load script
+  become: yes
+  #remote_user: "{{ harbor_rancher_username }}"
+  script: "{{ role_path }}/files/rancher-load-images.sh -i /var/tmp/rancher-images/{{ item.0 }} -l /var/tmp/rancher-images/{{ item.1 }} -r {{ docker_hostname }}/{{ docker_repo_path }}"
+  #script: "{{ role_path }}/files/rancher-load-images.sh -i /var/tmp/rancher-images/{{ item.0 }} -l /var/tmp/rancher-images/{{ item.1 }} -r {{ harbor_hostname }}/{{ harbor_repo_path }} -s docker.netson.rn:9001"
+  with_together:
+    - "{{ rancher_image_file_name }}"
+    - "{{ rancher_image_list_name }}"
+  tags: load_images
