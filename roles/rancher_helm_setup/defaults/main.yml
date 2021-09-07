@@ -4,8 +4,8 @@
 # of [env_local:children]
 
 rancher_version: 2.5.9
-rancher_url: rancher-nodes-b2bc5ef13ba620a2.elb.eu-west-1.amazonaws.com
-rancher_docker_registry: "{{ registry_hostname }}/{{ registry_repo_path }}"
+rancher_url: rancher-ef6cb8c94223eee0.elb.eu-west-1.amazonaws.com
+rancher_docker_registry: "3.250.127.223:5000" #"{{ registry_hostname }}/{{ registry_repo_path }}"
 rancher_helm_temp_dir: /tmp/helm-binaries
 rancher_helm_output_dir: /tmp/helm-templates
 

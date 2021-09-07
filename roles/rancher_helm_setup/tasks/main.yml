@@ -22,6 +22,9 @@
   command: helm repo list
   changed_when: false
   register: helm_repo_list
+  failed_when:
+  -  helm_repo_list.rc != 0
+  - "'no repositories to show' not in helm_repo_list.stderr"
 
 - name: Add rancher upstream repo into helm
   command: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
@@ -59,12 +62,12 @@
       --set ingress.tls.source={{ rancher_tls_source }}
       {{ '--set certmanager.version=' + cert_manager_version if rancher_tls_source == 'rancher' or rancher_tls_source == 'letsEncrypt' else '' }}
       {{ '--set privateCA=true' if rancher_tls_source == 'secret' else '' }}
-      --set rancherImage={{ rancher_docker_registry }}/{{ harbor_repo_path }}/rancher
+      --set rancherImage={{ rancher_docker_registry }}/rancher/rancher
       --set systemDefaultRegistry={{ rancher_docker_registry }}
       --set useBundledSystemChart=true
       --set rancherImageTag=v{{ rancher_version }}
       {{ '--set letsEncrypt.email=no-reply@cisc-uk.com' if rancher_tls_source == 'letsEncrypt' else '' }}
-
+#--set rancherImage={{ rancher_docker_registry }}/{{ harbor_repo_path }}/rancher
 - name: remove temp build directory
   file:
     path: "{{ rancher_helm_temp_dir }}"
