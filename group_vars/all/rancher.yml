@@ -1,6 +1,6 @@
 ---
 #rke_password:
-rancher_url: rancher-nodes-b2bc5ef13ba620a2.elb.eu-west-1.amazonaws.com/
+rancher_url: rancher-ef6cb8c94223eee0.elb.eu-west-1.amazonaws.com
 
 #rke_admin_username: admin
 #rke_username: "{{ rke_admin_username }}"

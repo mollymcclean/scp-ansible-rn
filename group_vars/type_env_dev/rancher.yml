@@ -2,7 +2,7 @@
 ansible_ssh_user: ubuntu
 cert_manager_version: v1.0.4
 
-rancher_url: rancher-nodes-b2bc5ef13ba620a2.elb.eu-west-1.amazonaws.com
+rancher_url: rancher-ef6cb8c94223eee0.elb.eu-west-1.amazonaws.com
 rancher_active_directory_allowed_login_principals:
   - "activedirectory_group://CN=rancher-users,OU=Groups,DC=lab,DC=int"
 #rancher_cloud_credential_id: 'cattle-global-data:cc-6vvmv'
