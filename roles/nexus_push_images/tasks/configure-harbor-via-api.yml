@@ -1,0 +1,113 @@
+---
+## HARBOR USER ##
+- name: List current Harbor users
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/users
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: GET
+    body_format: json
+  register: existing_harbor_users
+  tags: ['configure_harbor']
+
+- name: Check if the {{ harbor_project_user }} user account exists
+  set_fact: 
+    user_exists: "{{ existing_harbor_users.json | json_query('[? username==`%s`].username' % harbor_project_user) }}"
+  tags: ['configure_harbor']
+
+- name: Create the {{ harbor_project_user }} user
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/users
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: POST
+    body_format: json
+    status_code: [200, 201]
+    body: "{ \"username\": \"{{ harbor_project_user }}\", \"comment\": \"napp user\", \"password\": \"{{ harbor_project_user_password }}\", \"realname\": \"{{ harbor_project_user_real_name }}\", \"deleted\": false, \"email\": \"{{ harbor_project_user_email_address }}\" }"
+  when: (user_exists is not defined) or (user_exists|length == 0)
+  tags: ['configure_harbor']
+
+## HARBOR PROJECTS ##
+- name: Generate the exisitng list of Harbor projects
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/projects
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: GET
+    body_format: json
+  register: existing_harbor_projects
+  tags: ['configure_harbor']
+
+- name: Check if the {{ harbor_repo_path }} project exists
+  set_fact: 
+    project_exists: "{{ existing_harbor_projects.json | json_query('[? name==`%s`].name' % harbor_repo_path) }}"
+  tags: ['configure_harbor']
+
+- name: Create the {{ harbor_repo_path }} project
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/projects
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: POST
+    status_code: [200, 201]
+    body_format: json
+    body: "{ \"project_name\": \"{{ harbor_repo_path }}\", \"metadata\": { \"enable_content_trust\": \"false\", \"auto_scan\": \"false\", \"public\": \"true\", \"reuse_sys_cve_allowlist\": \"true\" }, \"public\": true }"
+  register: new_harbor_project
+  when: (project_exists is not defined) or (project_exists|length == 0)
+  tags: ['configure_harbor']
+
+- name: Generate the updated list of Harbor projects
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/projects
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: GET
+    body_format: json
+  register: latest_harbor_projects
+  tags: ['configure_harbor']
+
+- name: Determine the {{ harbor_repo_path }} project ID
+  set_fact: 
+    project_id: "{{ latest_harbor_projects.json | json_query('[? name==`%s`].project_id[] | [0]' % harbor_repo_path) }}"
+  tags: ['configure_harbor']
+
+- name: List the projects members
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/projects/{{ project_id }}/members
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: GET
+    body_format: json
+  register: project_members
+  tags: ['configure_harbor']
+
+- name: Determine if {{ harbor_project_user }} is already a member of the {{ harbor_repo_path }} project
+  set_fact: 
+    project_member_status: "{{ project_members.json | json_query('[? entity_name==`%s`].project_id[] | [0]' % harbor_project_user) }}"
+  tags: ['configure_harbor']
+  
+- name: Add the {{ harbor_project_user }} to the {{ harbor_repo_path }} project as an admin user
+  uri:
+    url: https://{{ harbor_hostname }}/api/v2.0/projects/{{ project_id }}/members
+    validate_certs: false
+    user: admin
+    password: "{{ harbor_admin_pw }}"
+    force_basic_auth: yes
+    method: POST
+    body_format: json
+    status_code: [200, 201]
+    body: "{ \"role_id\": 1, \"member_group\": { \"group_name\": \"string\", \"ldap_group_dn\": \"string\", \"group_type\": 0, \"id\": 0 }, \"member_user\": { \"username\": \"{{ harbor_project_user }}\" }}"
+  when: project_member_status != project_id
+  tags: ['configure_harbor']

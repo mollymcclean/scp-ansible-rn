@@ -1,8 +1,8 @@
 ---
-active_directory_domain: ibm.lab.int
+#active_directory_domain:
 active_directory_user_base: "OU=Users,OU=Rancher,DC=lab,DC=int"
 
-ssh_ad_fqdn: hivedc.ibm.lab.int
+#ssh_ad_fqdn: 
 ssh_ad_ou_to_join: "OU=Computers,OU=Rancher,DC=lab,DC=int"
 
 hostname_active_directory_fqdn: "{{ active_directory_domain }}"

@@ -1,13 +1,13 @@
 ---
-rke_password: Password123456!
-rancher_url: rancher.lab.int
+#rke_password:
+rancher_url: rancher-ef6cb8c94223eee0.elb.eu-west-1.amazonaws.com
 
-rke_admin_username: admin
-rke_username: "{{ rke_admin_username }}"
+#rke_admin_username: admin
+#rke_username: "{{ rke_admin_username }}"
 rancher_telemetry: out
 
-rke_vcenter_username: administrator@rnvcentre.local
-rke_vcenter_password: Password123456!
+#rke_vcenter_username:
+#rke_vcenter_password: 
 
 rancher_apps_cluster_name: apps-cluster
 apps_cluster_worker_nodes: 1
@@ -28,7 +28,7 @@ apps_cluster_worker_vsphere_tags: []
 deploy_rancher_ui_tls_path: /etc/ssl
 rancher_management_kubernetes_version: v1.19.6-rancher1-1
 rke_clone_from: "{{ rke_datacenter }}/vm/Templates/Ubuntu-18.04-CIS-vmware-rancher-v02"
-rke_cluster_config_rancher_kubernetes_engine_config_private_registries: 
+rke_cluster_config_rancher_kubernetes_engine_config_private_registries:
   - url: "harbor.lab.int/{{ harbor_repo_path }}"
     isDefault: true
     user: registry_user

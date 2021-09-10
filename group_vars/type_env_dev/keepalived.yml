@@ -1,5 +1,5 @@
 ---
 rke_cluster_floating_ip: 192.168.146.99
-postgres_cluster_floating_ip: 192.168.146.114
-redis_cluster_floating_ip: 192.168.146.105
-harbor_cluster_floating_ip: 192.168.146.104
+#postgres_cluster_floating_ip: 192.168.146.114
+#redis_cluster_floating_ip: 192.168.146.105
+#harbor_cluster_floating_ip: 192.168.146.104

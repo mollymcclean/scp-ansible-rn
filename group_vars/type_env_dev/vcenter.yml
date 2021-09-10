@@ -1,4 +1,4 @@
 ---
-rke_vcenter_domain: rnvcentre.lab.int
+rke_vcenter_domain: 
 rke_vcenter_tls_insecure: True
 rke_vcenter_folder: "{{ rke_folder }}"

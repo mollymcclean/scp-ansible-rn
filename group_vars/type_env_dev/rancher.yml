@@ -1,12 +1,13 @@
 ---
 ansible_ssh_user: ubuntu
-cert_manager_version: v0.8.1
+cert_manager_version: v1.0.4
 
-rancher_url: rancher.lab.int
+rancher_url: rancher-ef6cb8c94223eee0.elb.eu-west-1.amazonaws.com
 rancher_active_directory_allowed_login_principals:
   - "activedirectory_group://CN=rancher-users,OU=Groups,DC=lab,DC=int"
 #rancher_cloud_credential_id: 'cattle-global-data:cc-6vvmv'
-rancher_docker_registry: "{{ harbor_hostname }}/{{ harbor_repo_path }}"
+registry_name: docker
+rancher_docker_registry: "{{ registry_hostname }}/{{ registry_repo_path }}"
 #rancher_managed_cluster_vsphere_network_provider: vcenter_network
 rancher_ui_domain: "https://{{ rancher_url }}"
 rancher_ui_active_directory_domains: "{{ active_directory_domain }}"
@@ -20,15 +21,15 @@ deploy_rancher_ui_cert_type: 'custom-ca'
 rke_control_plane_cpu_count: 2
 rke_control_plane_memory_size: 2048
 rke_custom_service_account_key_subject: '/C=GB/ST=England/L=Berkshire/O=Automation_Logic/OU=Rancher/CN=kube-service-account-token'
-rke_datacenter: /AL_Datacenter 
-rke_folder: "{{ rke_datacenter }}/vm/Rancher-Platform"
+#rke_datacenter: /AL_Datacenter
+#rke_folder: "{{ rke_datacenter }}/vm/Rancher-Platform"
 rke_managed_cluster_rancher_domain: "{{ rancher_ui_domain }}"
 rke_provider: vsphere
 rke_validate_rancher_ssl_cert: true
-rke_vcenter_dns_domain: lab.int
+#rke_vcenter_dns_domain: lab.int
 rke_worker_cpu_count: 2
 rke_worker_memory_size: 2048
-rke_use_custom_certs: true
+rke_use_custom_certs: false
 #rke_vcenter_username: ITS IN THE ALL GROUP VARS
 #rke_vcenter_password: ITS IN THE ALL GROUP VARS
 
@@ -39,17 +40,17 @@ apps_cluster_vsphere_tags: []
 apps_cluster_network_name: "VM Network"
 apps_cluster_network: "{{ rke_datacenter }}/network/{{ apps_cluster_network_name }}"
 # Need to update this once we understand where the additional clusters will be created
-apps_cluster_pool: "{{ rke_datacenter }}/host/AL_Cluster/Resources"
-apps_cluster_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
-apps_cluster_rke_vcenter_default_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
+#apps_cluster_pool: "{{ rke_datacenter }}/host/AL_Cluster/Resources"
+#apps_cluster_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
+#apps_cluster_rke_vcenter_default_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
 apps_cluster_worker_nodes: 1
 rke_vsphere_k8s_control_node_template: controlplane-apps-dev-v1
 rke_vsphere_k8s_worker_node_template: worker-apps-dev-v1
 
-rke_control_plane_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-vmware-rancher-v01"
-rke_etcd_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-vmware-rancher-v01"
-rke_worker_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-managed-worker-node-v01"
-rke_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
+#rke_control_plane_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-vmware-rancher-v01"
+#rke_etcd_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-vmware-rancher-v01"
+#rke_worker_clone_from: "{{ rke_folder }}/Templates/Ubuntu-18.04-CIS-managed-worker-node-v01"
+#rke_datastore: "{{ rke_datacenter }}/datastore/vsanDatastore"
 
 apps_cluster_rke_vapp_property: []
 #  "guestinfo.interface.0.ip.0.address=ip:{{ apps_cluster_network_name }}",
